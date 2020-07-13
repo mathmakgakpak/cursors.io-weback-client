@@ -1,0 +1,52 @@
+<html>
+
+<head>
+    <title><%= htmlWebpackPlugin.options.title %></title>
+    <style>
+        @font-face {
+            font-family: 'NovaSquare';
+            src: url('./fonts/NovaSquare.ttf');
+        }
+
+        a {
+            color: #0000AA;
+            text-decoration: none;
+        }
+    </style>
+    <meta name="description" content="Collaborate (or not) with other cursors to progress further." />
+    <meta name="keywords"
+        content="game, webgame, web game, html5, mmo, flash, cursor, pointer, cursors, mouse, pointers, mathias377" />
+    <meta name="robots" content="index, follow" />
+    <script type="text/javascript" src="https://c.n.m28.io/sdk.js"></script>
+
+
+</head>
+
+<body>
+    <div>
+        <div style="border: 10px solid #000000; margin: 20px auto 10px auto; padding: 0; width: 800px; height: 600px;">
+            <!-- not really needed <div id="canvasContainer" style="width: 800px; height: 600px;"> -->
+                <canvas id="canvas" style="width: 800px; height: 600px;"></canvas>
+            <!-- </div> -->
+        </div>
+        <div style="width: 800px; margin: 0px auto;">
+            <!-- <label> -->
+                <input id="noCursorLock" type="checkbox" />No cursor lock
+            <!-- </label> -->
+            <!-- <label> -->
+                <input id="noDrawings" type="checkbox" />Disable drawings
+            <!-- </label> -->
+            <!-- <label> -->
+                <input id="disablePlayers" type="checkbox" />Disable players
+            <!-- </label> -->
+            <a style="float: right;" href="https://github.com/mathmakgakpak/" target="_blank">mathias377's github</a>
+            <br clear="both" />
+        </div>
+
+    </div>
+    <!-- what is that for <div style="visibility: hidden; width: 0px; height: 0px; overflow: hidden; font-family: Tahoma, Verdana, Segoe, sans-serif;">
+        <span style="font-family: NovaSquare, monospace;">a</span>
+    </div> -->
+</body>
+
+</html>

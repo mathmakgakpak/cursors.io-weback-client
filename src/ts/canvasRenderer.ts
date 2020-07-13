@@ -1,0 +1,306 @@
+// asd@ts-nocheck
+
+// import { eventSys, PublicAPI } from './global';
+import { mapSize } from './gameSettings';
+import { settings } from './main';
+import { rgbToHex, rainbowGenerator, getPointerLockElement } from './utils';
+import { LevelObject, Click, Drawing } from './types';
+import { canvas } from './elements';
+// import alphabet from './alphabet';
+
+
+// TODO optimize
+
+const PI2 = Math.PI * 2;
+
+const { width, realWidth, height, realHeight } = mapSize;
+
+
+export const ctx = <CanvasRenderingContext2D>canvas.getContext("2d");
+const cursorImage: HTMLImageElement = new Image;
+cursorImage.src = require("../img/cursor.png"); // should load
+
+export const renderSettings = {
+    maxRenderedPlayers: 100,
+    maxRenderedDrawings: 30,
+    drawingRenderTime: 10000,
+    clickRenderTime: 1000,
+    clickMaxRadius: 50,
+    maxRenderedClicks: 30
+};
+
+// setting scale
+
+const scale = window.devicePixelRatio;
+canvas.width = width * scale;
+canvas.height = height * scale;
+ctx.scale(scale, scale);
+
+export function clearCanvas() {
+    ctx.clearRect(0, 0, width, height);
+}
+
+export function renderLevelObjects(levelObjects: /*LevelObject*/any[]) { // obj.width causes error screw it
+    levelObjects.forEach(obj => {
+        let x = obj.x * 2;
+        let y = obj.y * 2;
+        ctx.globalAlpha = 1;
+
+        if(obj.type === 0) { // text
+            if(obj.isCentered) x -= ctx.measureText(obj.text).width / 2;
+
+            ctx.font = obj.size + "px NovaSquare";
+            ctx.fillStyle = "#000";
+            ctx.fillText(obj.text, x, y);
+        } else if(obj.type === 1) { // wall
+            ctx.fillStyle = obj.color;
+            ctx.fillRect(x, y, obj.width * 2, obj.height * 2);
+        } else if(obj.type === 2) { // exit/red thing
+            ctx.fillStyle = obj.isBad ? "#F00" : "#0F0";
+            ctx.globalAlpha = 0.2;
+            ctx.fillRect(x, y, obj.width * 2, obj.height * 2);
+            ctx.globalAlpha = 1;
+        } else if(obj.type === 3) { // hover
+            ctx.fillStyle = obj.color;
+            ctx.globalAlpha = 0.2;
+            ctx.fillRect(x, y, obj.width * 2, obj.height * 2);
+
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = "#000";
+
+            /* // overcomplicated
+            let { width, height, count: text } = obj; 
+
+            if(width < 20 && height < 20) {
+                ctx.font = "30px NovaSquare";
+
+                x += width - ctx.measureText(text).width/2;
+                y += height + 10;
+                
+            } else { // 60 / 40 = 1.5
+                let measureHeight = Math.round(1.5 * Math.hypot(width, height));
+                ctx.font = measureHeight + "px NovaSquare";
+                
+                var measure = ctx.measureText(text);
+                x += width - measure.width / 2;
+                y += height + measureHeight / 2;
+            }
+            */
+            // not multipling or dividing obj.width because it has no sense then
+
+            let text = obj.count;
+            if(obj.width < 40 && obj.height < 40) {
+                ctx.font = "30px NovaSquare";
+
+                x += obj.width - ctx.measureText(text).width/2;
+                y += obj.height + 10;
+                
+            } else { 
+                ctx.font = "60px NovaSquare";
+
+                x += obj.width - ctx.measureText(text).width/2;
+                y += obj.height + 20;
+            }
+
+            ctx.fillText(text, x, y);
+            ctx.globalAlpha = 1;
+        } else if(obj.type === 4) { // button TODO fix it later
+            ctx.fillStyle = obj.color;
+            ctx.fillRect(x, y, obj.width * 2, obj.height * 2);
+
+            ctx.fillStyle = "#000";
+
+            let text = obj.count;
+            if(obj.width < 40 && obj.height < 40) {
+                ctx.font = "30px NovaSquare";
+
+                x += obj.width - ctx.measureText(text).width/2;
+                y += obj.height + 10;
+                
+            } else { 
+                ctx.font = "60px NovaSquare";
+
+                x += obj.width - ctx.measureText(text).width/2;
+                y += obj.height + 20;
+            }
+
+            ctx.fillText(text, x, y);
+        }
+    });
+}
+export function renderDrawings(drawings: Drawing[]) {
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 1;
+    let now = Date.now();
+    drawings.forEach(drawing => {
+        ctx.globalAlpha = 0.3 * ((drawing.removedAt - now) / renderSettings.drawingRenderTime);
+        ctx.beginPath();
+        ctx.moveTo(drawing.x1, drawing.x2);
+        ctx.lineTo(drawing.x2, drawing.y2);
+        ctx.stroke();
+    });
+}
+export function renderClicks(clicks: Click[]) {
+    // ctx.strokeStyle = "#000";
+    let now = Date.now();
+    clicks.forEach(click => {
+        let radius = (click.removedAt - now) / renderSettings.clickRenderTime;
+        let stage = (1 - 2 * radius) * 0.3;
+        radius *= 50;
+
+        ctx.globalAlpha = stage;
+        ctx.beginPath();
+        ctx.arc(click.x, click.y, radius, 0, PI2);
+        ctx.stroke();
+    })
+}
+
+let getRainbowColor: () => string;
+(()=>{
+    // @ts-ignore
+    const rainbowColors = rainbowGenerator(0.1);
+
+    let stepOfRainbow = 0;
+    getRainbowColor = function() {
+        let val = <number[]>rainbowColors.next().value;
+        return rgbToHex(val[0], val[1], val[2]);
+    }
+})();
+
+
+function drawText(text: string, x: number, y: number) {
+    ctx.globalAlpha = 0.5;
+    ctx.strokeText(text, x, y);
+    ctx.globalAlpha = 1;
+    ctx.fillText(text, x, y);
+}
+
+export function renderHUD(onlinePlayers: number, playersOnLevel: number, actualLevel: number) {
+    ctx.font = "12px NovaSquare";
+    //ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2.5;
+    
+    ctx.fillStyle = getRainbowColor();
+
+    drawText("Client made by mathias377#3326", 10, 12 * 1.3); // code gets optimized later
+    
+    ctx.fillStyle = "#FFF";
+    let x = 10;
+    let y = height - 10;
+    let text = "Use shift+click to draw";
+    if(playersOnLevel > 100) text = "Area too full, not all cursors are shown";
+    else if(playersOnLevel > 30) text = "Area too full, drawing is disabled";
+    
+    drawText(text, x, y);
+
+
+    text = onlinePlayers + " players online";
+    let measure = ctx.measureText(text).width;
+    x = width - measure - 10;
+
+    drawText(text, x, y);
+
+
+    text = playersOnLevel + " players on level";
+    measure = ctx.measureText(text).width;
+    x = width - measure - 10;
+    y -= 12 * 1.5;
+
+    drawText(text, x, y);
+
+    text = "Actual level: " + actualLevel;
+    measure = ctx.measureText(text).width;
+    x = width - measure - 10;
+    y -= 12 * 1.5;
+
+    drawText(text, x, y);
+}
+
+export function renderPlayers(players: any) {
+    // 4 is shadow
+    ctx.font = "12px NovaSquare";
+    ctx.fillStyle = "#000";
+
+    let i = 0;
+    for(let ii in players) {
+        if(i > renderSettings.maxRenderedPlayers) break;
+        let player = players[ii];
+        let x = player.x * 2;
+        let y = player.y * 2;
+        ctx.drawImage(cursorImage, x - 4, y - 4);
+        ctx.fillText(<string>player.id, x + 16, y + 24);
+        i++;
+    }
+}
+
+export function renderMainPlayer(mainPlayer: any) {
+    if(getPointerLockElement() !== canvas) { // change that
+        if(mainPlayer.x !== mainPlayer.mouseX || mainPlayer.y !== mainPlayer.mouseY) {
+            ctx.fillStyle = "#F00";
+            ctx.globalAlpha = 0.2;
+            
+            ctx.beginPath();
+            ctx.arc(mainPlayer.canvasMouseX + 2, mainPlayer.canvasMouseY + 8, 20, 0, PI2);
+            ctx.fill();
+
+            ctx.globalAlpha = 0.5;
+            ctx.drawImage(cursorImage, mainPlayer.canvasMouseX - 4, mainPlayer.canvasMouseY - 4);
+        }
+        ctx.fillStyle = "#FF0";
+        ctx.globalAlpha = 0.2;
+        
+        ctx.beginPath();
+        ctx.arc(mainPlayer.canvasX + 2, mainPlayer.canvasY + 8, 20, 0, PI2);
+        ctx.fill();
+
+        /*ctx.globalAlpha = 1;
+        ctx.drawImage(cursorImage, mainPlayer.x - 4, mainPlayer.y - 4);*/
+    }/* else {
+        ctx.globalAlpha = 1;
+        ctx.drawImage(cursorImage, mainPlayer.x - 4, mainPlayer.y - 4);
+    }*/
+    ctx.globalAlpha = 1;
+    ctx.drawImage(cursorImage, mainPlayer.canvasX - 4, mainPlayer.canvasY - 4); // less code ¯\_(ツ)_/¯
+}
+
+
+export function renderDoNotEmbedSite() {
+    ctx.fillStyle = "#000000";
+    ctx.font = "35px NovaSquare";
+    ctx.fillText("Please do not embed our website, thank you.", 400 - ctx.measureText("Please do not embed our website, thank you.").width / 2, 300);
+    ctx.font = "16px NovaSquare";
+    ctx.fillText("Play the game on http://cursors.io/", 400 - ctx.measureText("Play the game on http://cursors.io/").width / 2, 330);
+    // @ts-ignore
+    //window.top.location = "http://cursors.io";
+    throw "Please do not embed our website, thank you.";
+}
+
+/*
+0. clear
+1. level objects
+3. drawings
+4. clicks
+5. HUD
+6. players
+7. main cursor
+*/
+export function render(
+     levelObjects: LevelObject[],
+     drawings: Drawing[],
+     clicks: Click[],
+     onlinePlayers: number,
+     playersOnLevel: number,
+     actualLevel: number,
+     players: any,
+     mainPlayer: any) {
+    clearCanvas();
+
+    renderLevelObjects(levelObjects);
+
+    if(!settings.disableDrawings) renderDrawings(drawings);
+    renderClicks(clicks);
+    
+    renderHUD(onlinePlayers, playersOnLevel, actualLevel);
+    if(!settings.disablePlayers) renderPlayers(players);
+    renderMainPlayer(mainPlayer);
+}

@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "target": "es5",
+    "module": "es2020",
+    "strict": true,
+    "removeComments": true
+  },
+  "include": [
+    "src/ts/*"
+  ]
+}
