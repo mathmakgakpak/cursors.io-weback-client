@@ -1,39 +1,14 @@
 import EventEmitter from 'events';
-import { Click, Drawing } from './types';
-import { LevelObject } from './types';
+import { Click, Drawing, LevelObject, Point } from './types';
 import { renderSettings } from './canvasRenderer';
+import { defaultURL } from './gameSettings';
 
 export {
-    defaultUrl,
-    getCursorsServer,
     parseObjects,
     compareLevel,
     Client
 }
 
-const defaultUrl: string = "ws://157.245.226.69:2828";
-interface wot {
-    id: string;
-    ipv4: string;
-    ipv6: string
-}
-function getCursorsServer(): Promise<string> {
-    return new Promise(resolve => {
-        // @ts-ignore
-        if (m28n) {
-            // @ts-ignore
-            m28n.findServerPreference("cursors", (err: Error, res: wot[] | undefined) => {
-                if (err || !res || !res[0]) {
-                    resolve(defaultUrl);
-                } else {
-                    resolve(`ws://${res[0].ipv4}:2828`);
-                }
-            });
-        } else {
-            resolve(defaultUrl);
-        }
-    });
-}
 
 function updateClicksOrDrawings(clicksOrDrawings: Click[] | Drawing[]) {
     let now = Date.now();
@@ -204,10 +179,7 @@ interface Options {
     ws?: string;
     reconnect?: boolean
 }
-interface Point {
-    x: number;
-    y: number;
-}
+
 class Client extends EventEmitter.EventEmitter {
     public prevLevels: LevelObject[][] = [];
     public levelObjects: LevelObject[] = [];
@@ -220,8 +192,14 @@ class Client extends EventEmitter.EventEmitter {
     public gridSpace = 100;
     public playersOnLevel = 0;
     public usersOnline = 0;
-    private ticks: number = 0;
-    // private jobs: number = 0; // implementation for making bot system (drawText)
+    // @ts-ignore
+    #ticks: number = 0;
+    // @ts-ignore: webpack ignores 
+    #clicksAndDrawingsUpdateInterval: number = window.setInterval(() => {
+        this.clicks = updateClicksOrDrawings(this.clicks);
+        this.drawings = updateClicksOrDrawings(this.drawings);
+    }, 1);
+    // #jobs: number = 0; // implementation for making bot system (drawText)
     public ws: WebSocket | undefined;
     public id: number = -1;
     public level: number = -1;
@@ -234,7 +212,7 @@ class Client extends EventEmitter.EventEmitter {
     constructor(options: Options = {}) {
         super();
 
-        if (!options.ws) options.ws = defaultUrl;
+        if (!options.ws) options.ws = defaultURL;
         if (typeof options.reconnectTimeout !== "number") options.reconnectTimeout = 5000;
         if (typeof options.autoMakeSocket === "undefined") options.autoMakeSocket = true;
         if (typeof options.log === "undefined") options.log = true;
@@ -251,9 +229,7 @@ class Client extends EventEmitter.EventEmitter {
         if (this.options.log) console.log(...args);
     }
     async makeSocket() {
-        //this.options.ws = ((await getCursorsServer()) || defaultUrl);
-
-        this.ws = new WebSocket(this.options.ws || defaultUrl);
+        this.ws = new WebSocket(<string>this.options.ws);
         this.ws.binaryType = "arraybuffer";
 
         this.players = {};
@@ -267,7 +243,7 @@ class Client extends EventEmitter.EventEmitter {
             x: 0,
             y: 0
         }
-        this.ticks = 0;
+        this.#ticks = 0;
         //this.jobs = 0;
         this.level = -1;
         this.id = -1;
@@ -275,20 +251,18 @@ class Client extends EventEmitter.EventEmitter {
         this.usersOnline = 0;
         this.playersOnLevel = 0;
 
-        this.ws.onopen = (event: any) => {
-            this.emit("open", event);
-        }
+        this.ws.onopen = (event: any) => this.emit("open", event);
+        
         this.ws.onclose = (event: any) => {
             this.emit("close", event);
             if (this.options.reconnect) setTimeout(this.makeSocket, this.options.reconnectTimeout);
         }
-        this.ws.onerror = (event: any) => {
-            this.emit("error", event);
-        }
+        this.ws.onerror = (event: any) => this.emit("error", event);
+        
         this.ws.onmessage = message => {
-            let arrayBuffer = message.data;
-            let len = arrayBuffer.length;
-            let dv = new DataView(arrayBuffer);
+            const arrayBuffer = message.data;
+            const len = arrayBuffer.length;
+            const dv = new DataView(arrayBuffer);
 
             this.emit("message", arrayBuffer);
 
@@ -362,7 +336,7 @@ class Client extends EventEmitter.EventEmitter {
 
                     this.emit("newClicks", clicks);
 
-                    this.clicks = updateClicksOrDrawings(this.clicks.concat(clicks));
+                    this.clicks = this.clicks.concat(clicks);
                     // removed objects
                     let removedObjects: LevelObject[] = [];
                     count = dv.getUint16(offset, true);
@@ -406,13 +380,13 @@ class Client extends EventEmitter.EventEmitter {
                     }
                     this.emit("newDrawings", drawings);
 
-                    this.drawings = updateClicksOrDrawings(this.drawings.concat(drawings));
+                    this.drawings = this.drawings.concat(drawings);
 
                     if (len >= offset + 4) {
-                        this.ticks = Math.max(this.ticks, dv.getUint32(offset, true));
+                        this.#ticks = Math.max(this.#ticks, dv.getUint32(offset, true));
                         offset += 4;
                     } else if (len >= offset + 2) {
-                        this.ticks = Math.max(this.ticks, dv.getUint16(offset, true));
+                        this.#ticks = Math.max(this.#ticks, dv.getUint16(offset, true));
                         offset += 2;
                     }
                     break;
@@ -428,9 +402,9 @@ class Client extends EventEmitter.EventEmitter {
                     this.position.y = dv.getUint16(3, true);
 
                     if (len >= 9) {
-                        this.ticks = Math.max(this.ticks, dv.getUint32(5, true));
+                        this.#ticks = Math.max(this.#ticks, dv.getUint32(5, true));
                     } else if (len >= 7) {
-                        this.ticks = Math.max(this.ticks, dv.getUint16(5, true));
+                        this.#ticks = Math.max(this.#ticks, dv.getUint16(5, true));
                     }
                     break;
                 }
@@ -448,7 +422,7 @@ class Client extends EventEmitter.EventEmitter {
         dv.setUint8(0, 1);
         dv.setUint16(1, x, true);
         dv.setUint16(3, y, true);
-        dv.setUint32(5, this.ticks, true);
+        dv.setUint32(5, this.#ticks, true);
         // @ts-ignore
         this.ws.send(array);
 
@@ -463,7 +437,7 @@ class Client extends EventEmitter.EventEmitter {
         dv.setUint8(0, 2);
         dv.setUint16(1, x, true);
         dv.setUint16(3, y, true);
-        dv.setUint32(5, this.ticks, true);
+        dv.setUint32(5, this.#ticks, true);
         // @ts-ignore
         this.ws.send(array);
 

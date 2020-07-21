@@ -2,7 +2,9 @@ import { eventSys, PublicAPI } from './global';
 import { Settings } from './Settings';
 import { mousePos } from './mouse';
 import { canvas } from './elements';
-import { Client, getCursorsServer, defaultUrl } from './Client';
+import { Client } from './Client';
+import { getCursorsServer} from './utils';
+import log from './sexylogs';
 import './requires';
 import './canvasRenderer';
 
@@ -13,6 +15,11 @@ import './canvasRenderer';
 document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock || document.webkitExitPointerLock;
 
 export const settings = PublicAPI.settings = new Settings;
+
+// @ts-ignore
+log.info("Version: " + VERSION);
+// @ts-ignore
+log.info("Build: " + BUILD);
 
 export const mainPlayer = {
     client: new Client({
@@ -30,7 +37,7 @@ export const mainPlayer = {
 };
 
 async function connect() {
-    mainPlayer.client.options.ws = await getCursorsServer() || defaultUrl;
-    mainPlayer.client.makeSocket();
+    mainPlayer.client.options.ws = await getCursorsServer();
+    await mainPlayer.client.makeSocket();
 }
 

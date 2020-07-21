@@ -3,7 +3,7 @@
 // import { eventSys, PublicAPI } from './global';
 import { mapSize } from './gameSettings';
 import { settings } from './main';
-import { rgbToHex, rainbowGenerator, getPointerLockElement } from './utils';
+import { getPointerLockElement } from './utils';
 import { LevelObject, Click, Drawing } from './types';
 import { canvas } from './elements';
 // import alphabet from './alphabet';
@@ -155,7 +155,7 @@ export function renderClicks(clicks: Click[]) {
     })
 }
 
-let getRainbowColor: () => string;
+/*let getRainbowColor: () => string;
 (()=>{
     // @ts-ignore
     const rainbowColors = rainbowGenerator(0.1);
@@ -165,7 +165,7 @@ let getRainbowColor: () => string;
         let val = <number[]>rainbowColors.next().value;
         return rgbToHex(val[0], val[1], val[2]);
     }
-})();
+})();*/
 
 
 function drawText(text: string, x: number, y: number) {
@@ -174,13 +174,15 @@ function drawText(text: string, x: number, y: number) {
     ctx.globalAlpha = 1;
     ctx.fillText(text, x, y);
 }
+let _hue = 0;
+const hue = () => _hue++ < 360 ? _hue : (_hue = 0);
 
 export function renderHUD(onlinePlayers: number, playersOnLevel: number, actualLevel: number) {
     ctx.font = "12px NovaSquare";
     //ctx.strokeStyle = "#000";
     ctx.lineWidth = 2.5;
     
-    ctx.fillStyle = getRainbowColor();
+    ctx.fillStyle = `hsl(${hue()}, 100%, 50%)`
 
     drawText("Client made by mathias377#3326", 10, 12 * 1.3); // code gets optimized later
     

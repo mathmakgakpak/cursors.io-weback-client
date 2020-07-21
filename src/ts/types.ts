@@ -62,3 +62,7 @@ export interface LevelObject {
     count?: number;
     // ^ hover, button
 }
+export interface Point {
+    x: number;
+    y: number;
+}

@@ -5,7 +5,16 @@ const fs = require('fs-extra');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ScriptExtHtmlWebpackPlugin = require('script-ext-html-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
-
+const packageJSON = require("./package.json");
+let VERSION = packageJSON.version;
+function addToVersion(version, number = 1) { // dumb
+    let zeros = version.split(".");
+    for(let i = 0; i < zeros.length; i++) if(zeros[i] != 0) {
+        zeros = zeros.slice(0, i).join(".");;
+        break;
+    }
+    return zeros + "." + (+version.split(".").join("") + number).toString().split("").join(".");
+}
 
 const srcDir = path.resolve(__dirname, "src");
 
@@ -101,7 +110,9 @@ module.exports = async (env = {}) => {
         console.log(`Cleaning build dir: '${config.output.path}'`);
         await fs.remove(config.output.path);
         
-        console.log("release build\n");
+        packageJSON.version = VERSION = addToVersion(VERSION);
+        
+        await fs.writeFile("./package.json", JSON.stringify(packageJSON, null, 2));
     } else {
         if (env.devclean) {
             console.log(`Cleaning build dir: '${config.output.path}'`);
@@ -110,17 +121,20 @@ module.exports = async (env = {}) => {
         
         config.mode = "development";
         config.devtool = "source-map";
-        
-        console.log("development build\n");
     }
     config.output.publicPath = './'; // change that later
+
+    const BUILD = +(await fs.readFile("./build.txt", {encoding: "utf8"})) + 1;
+    await fs.writeFile("./build.txt", BUILD);
+
+    console.log(`${!!env.release ? "release" : "development"} build\nVersion: ${VERSION}\nBuild: ${BUILD}\n`);
+
     config.plugins.push(new webpack.DefinePlugin({
-        'PRODUCTION_BUILD': JSON.stringify(!!env.release)
+        PRODUCTION_BUILD: JSON.stringify(!!env.release),
+        BUILD,
+        VERSION: JSON.stringify(VERSION)
     }));
 
-    let build = +(await fs.readFile("./build.txt", {encoding: "utf8"})) + 1;
-    await fs.writeFile("./build.txt", build);
-    console.log("build " + build);
     
     return config;
 }

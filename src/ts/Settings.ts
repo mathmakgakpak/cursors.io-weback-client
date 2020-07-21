@@ -1,6 +1,6 @@
 import { noCursorLock, disableDrawings, disablePlayers } from './elements';
 
-export class Settings { // this is shit
+export class Settings {
     constructor() {
         noCursorLock.checked = window.localStorage.noCursorLock === "true";
         disableDrawings.checked = window.localStorage.disableDrawings === "true";
@@ -11,7 +11,6 @@ export class Settings { // this is shit
             window.localStorage.disableDrawings = this.disableDrawings;
             window.localStorage.disablePlayers = this.disablePlayers;
          });
-
     }
     get noCursorLock() {
         return noCursorLock.checked;

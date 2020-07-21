@@ -1,7 +1,7 @@
-import { EventEmitter } from 'events';
+import EventEmitter from 'events';
 
 export const PublicAPI = (<any>window).C = (<any>window).Cursors = <any>{};
-export const eventSys = new EventEmitter();
+export const eventSys = new EventEmitter.EventEmitter();
 
 PublicAPI.emit = eventSys.emit.bind(eventSys);
 PublicAPI.on = eventSys.on.bind(eventSys);
