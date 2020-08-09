@@ -9,7 +9,6 @@ const log = {
     end: console.groupEnd.bind(window.console),
 };
 
-// @ats-ignore: that variable exists in webpack config
-//if (PRODUCTION_BUILD) log.msg = log.dir = log.error = log.warn = log.info = log.success = log.start = log.end = () => {};
+//if (process.env.PRODUCTION_BUILD) log.msg = log.dir = log.error = log.warn = log.info = log.success = log.start = log.end = () => {};
 
 export default log;

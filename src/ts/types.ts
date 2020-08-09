@@ -66,3 +66,7 @@ export interface Point {
     x: number;
     y: number;
 }
+export interface PointBob extends Point { // idk how to call it
+    canvasX: number;
+    canvasY: number;
+} 

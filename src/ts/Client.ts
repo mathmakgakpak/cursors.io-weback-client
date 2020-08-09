@@ -1,7 +1,9 @@
 import EventEmitter from 'events';
-import { Click, Drawing, LevelObject, Point } from './types';
-import { renderSettings } from './canvasRenderer';
+import { Click, Drawing, LevelObject, PointBob } from './types';
+import { rendererSettings } from './canvasRenderer';
 import { defaultURL } from './gameSettings';
+import { changeStateOfWall, levelObjectsToGrid } from './utils';
+import log from './sexylogs';
 
 export {
     parseObjects,
@@ -146,32 +148,7 @@ function compareLevel(prevLevels: any, level: LevelObject[]) {
     return levelIndex;
 }
 
-/*function getMoreInfoAboutPlayers(oldPlayers, players) {
-    let newPlayers = [];
-    let updatedPlayers = [];
-    let removedPlayers = [];
 
-    players.forEach(player => {
-        let id = player.id;
-        let oldPlayer = oldPlayers.find(x => x.id === id);
-
-        let playerUpdated = oldPlayer && player.x !== oldPlayer.x || player.y !== oldPlayer.y;
-
-        if (playerUpdated) { // oldPlayerCheck is already in playerUpdated
-            updatedPlayers.push(player);
-        } else if (!oldPlayer) {
-            player.joinedAt = Date.now();
-            newPlayers.push(player);
-        }
-    });
-
-    oldPlayers.forEach(player => {
-        let id = player.id;
-        if (!players.find(x => x.id === id)) removedPlayers.push(player);
-    });
-
-    return [newPlayers, updatedPlayers, removedPlayers];
-}*/
 interface Options {
     reconnectTimeout?: number;
     autoMakeSocket?: boolean;
@@ -189,11 +166,13 @@ class Client extends EventEmitter.EventEmitter {
         id: Player
     }
     */
-    public gridSpace = 100;
-    public playersOnLevel = 0;
-    public usersOnline = 0;
+    public grid: Uint8Array[] = [];
+    public gridSpace: number = 100;
+
+    public playersOnLevel: number = 0;
+    public usersOnline: number = 0;
     // @ts-ignore
-    #ticks: number = 0;
+    private ticks: number = 0;
     // @ts-ignore: webpack ignores 
     #clicksAndDrawingsUpdateInterval: number = window.setInterval(() => {
         this.clicks = updateClicksOrDrawings(this.clicks);
@@ -203,9 +182,11 @@ class Client extends EventEmitter.EventEmitter {
     public ws: WebSocket | undefined;
     public id: number = -1;
     public level: number = -1;
-    public position: Point = { // should be unchangable
+    public position: PointBob = { // should be unchangable
         x: 0,
-        y: 0
+        y: 0,
+        canvasX: 0,
+        canvasY: 0
     }
     public clicks: Click[] = [];
     public drawings: Drawing[] = [];
@@ -222,36 +203,50 @@ class Client extends EventEmitter.EventEmitter {
         if (options.autoMakeSocket) {
             this.makeSocket();
         } else {
-            this.log("Disabled option autoMakeSocket! If you want start bot, do it in your script!");
+            this.log("warn", "Disabled option autoMakeSocket! If you want start bot, do it in your script!");
         }
     }
-    private log(...args: any[]) {
-        if (this.options.log) console.log(...args);
+    private log(type: string, ...args: any[]) {
+        // @ts-ignore: fuck that error
+        if (this.options.log) log[type](...args);
     }
-    async makeSocket() {
-        this.ws = new WebSocket(<string>this.options.ws);
-        this.ws.binaryType = "arraybuffer";
-
+    private resetVariables() {
         this.players = {};
         this.drawings = [];
         this.clicks = [];
 
         this.prevLevels = [];
         this.levelObjects = [];
+        this.grid = [];
 
         this.position = {
             x: 0,
-            y: 0
+            y: 0,
+            canvasX: 0,
+            canvasY: 0
         }
-        this.#ticks = 0;
+        this.ticks = 0;
         //this.jobs = 0;
         this.level = -1;
         this.id = -1;
         this.gridSpace = 100;
         this.usersOnline = 0;
         this.playersOnLevel = 0;
+    }
+    private setPosition(x: number, y: number) {
+        this.position.x = x;
+        this.position.y = y;
 
-        this.ws.onopen = (event: any) => this.emit("open", event);
+        this.position.canvasX = x * 2;
+        this.position.canvasY = y * 2;
+    }
+    makeSocket() {
+        this.resetVariables();
+
+        this.ws = new WebSocket(<string>this.options.ws);
+        this.ws.binaryType = "arraybuffer";
+
+        this.ws.onopen = (event: any) => {this.emit("open", event)};
         
         this.ws.onclose = (event: any) => {
             this.emit("close", event);
@@ -297,7 +292,7 @@ class Client extends EventEmitter.EventEmitter {
                         offset += 4 + 2 + 2;
 
                         let oldPlayer = this.players[id];
-                        let playerUpdated = oldPlayer && player.x !== oldPlayer.x || player.y !== oldPlayer.y;
+                        let playerUpdated = oldPlayer && (player.x !== oldPlayer.x || player.y !== oldPlayer.y);
 
                         if ( /*oldPlayer &&*/ playerUpdated) { // oldPlayerCheck is already in playerUpdated
                             updatedPlayers.push(player);
@@ -329,7 +324,7 @@ class Client extends EventEmitter.EventEmitter {
                             x: dv.getUint16(offset, true),
                             y: dv.getUint16(offset + 2, true),
                             clickedAt: Date.now(),
-                            removedAt: Date.now() + renderSettings.clickRenderTime
+                            removedAt: Date.now() + rendererSettings.clickRenderTime
                         });
                         offset += 2 + 2;
                     }
@@ -343,13 +338,14 @@ class Client extends EventEmitter.EventEmitter {
                     offset += 2;
 
                     for (let i = 0; i < count; i++) {
-                        removedObjects.push(
-                            this.levelObjects.splice(
-                                this.levelObjects.findIndex(x => x.id = dv.getUint32(offset, true)
-                                ), 1)[0]
-                        ); // or using concat
-                        offset += 4;
+                        const obj = this.levelObjects.splice(
+                         this.levelObjects.findIndex(x => x.id = dv.getUint32(offset, true)),
+                        1)[0];
 
+                        removedObjects.push(obj);
+                        if(obj.type === 1) changeStateOfWall(obj, this.grid, 0); // buttons are not vanishing but shit happens
+
+                        offset += 4;
                     }
                     this.emit("removedObjects", removedObjects);
 
@@ -359,7 +355,10 @@ class Client extends EventEmitter.EventEmitter {
                     offset = <number>a.shift();
                     this.emit("addedObjects", addedObjects);
 
-                    this.levelObjects = this.levelObjects.concat(addedObjects);
+                    addedObjects.forEach(obj => {
+                        this.levelObjects.push(obj);
+                        if(obj.type === 1) changeStateOfWall(obj, this.grid, 1);
+                    });
 
                     // drawings
                     count = dv.getUint16(offset, true);
@@ -374,7 +373,7 @@ class Client extends EventEmitter.EventEmitter {
                             x2: dv.getUint16(offset + 2 + 2, true),
                             y2: dv.getUint16(offset + 2 + 2 + 2, true),
                             drawedAt: Date.now(),
-                            removedAt: Date.now() + renderSettings.drawingRenderTime
+                            removedAt: Date.now() + rendererSettings.drawingRenderTime
                         });
                         offset += 2 + 2 + 2 + 2;
                     }
@@ -383,28 +382,30 @@ class Client extends EventEmitter.EventEmitter {
                     this.drawings = this.drawings.concat(drawings);
 
                     if (len >= offset + 4) {
-                        this.#ticks = Math.max(this.#ticks, dv.getUint32(offset, true));
+                        this.ticks = Math.max(this.ticks, dv.getUint32(offset, true));
                         offset += 4;
                     } else if (len >= offset + 2) {
-                        this.#ticks = Math.max(this.#ticks, dv.getUint16(offset, true));
+                        this.ticks = Math.max(this.ticks, dv.getUint16(offset, true));
                         offset += 2;
                     }
                     break;
                 }
                 case 4: {
-                    this.levelObjects = <LevelObject[]>parseObjects(dv, 1).shift();
+                    this.setPosition(dv.getUint16(1, true), dv.getUint16(3, true));
+
+                    this.levelObjects = <LevelObject[]>parseObjects(dv, 5).shift();
+                    this.grid = levelObjectsToGrid(this.levelObjects);
 
                     this.level = compareLevel(this.prevLevels, this.levelObjects);
                     break;
                 }
                 case 5: {
-                    this.position.x = dv.getUint16(1, true);
-                    this.position.y = dv.getUint16(3, true);
+                    this.setPosition(dv.getUint16(1, true), dv.getUint16(3, true));
 
                     if (len >= 9) {
-                        this.#ticks = Math.max(this.#ticks, dv.getUint32(5, true));
+                        this.ticks = Math.max(this.ticks, dv.getUint32(5, true));
                     } else if (len >= 7) {
-                        this.#ticks = Math.max(this.#ticks, dv.getUint16(5, true));
+                        this.ticks = Math.max(this.ticks, dv.getUint16(5, true));
                     }
                     break;
                 }
@@ -412,43 +413,43 @@ class Client extends EventEmitter.EventEmitter {
         }
     }
     private isConnected(): boolean {
-        // @ts-ignore
-        return this.ws && this.ws.readyState !== WebSocket.OPEN;
+        return this.ws?.readyState === WebSocket.OPEN;
     }
-    move(x: number, y: number): boolean {
+    move(x: number = this.position.x, y: number = this.position.y): boolean {
         if (!this.isConnected()) return false;
-        let array = new ArrayBuffer(9);
-        let dv = new DataView(array);
+        const array = new ArrayBuffer(9);
+        const dv = new DataView(array);
+
         dv.setUint8(0, 1);
         dv.setUint16(1, x, true);
         dv.setUint16(3, y, true);
-        dv.setUint32(5, this.#ticks, true);
+        dv.setUint32(5, this.ticks, true);
         // @ts-ignore
         this.ws.send(array);
 
-        this.position.x = x;
-        this.position.y = y;
+        this.setPosition(x, y);
         return true;
     }
-    click(x: number, y: number): boolean {
+    click(x: number = this.position.x, y: number = this.position.y): boolean {
         if (!this.isConnected()) return false;
-        let array = new ArrayBuffer(9);
-        let dv = new DataView(array);
+        const array = new ArrayBuffer(9);
+        const dv = new DataView(array);
+
         dv.setUint8(0, 2);
         dv.setUint16(1, x, true);
         dv.setUint16(3, y, true);
-        dv.setUint32(5, this.#ticks, true);
+        dv.setUint32(5, this.ticks, true);
         // @ts-ignore
         this.ws.send(array);
 
-        this.position.x = x;
-        this.position.y = y;
+        this.setPosition(x, y);
         return true;
     }
     draw(x1: number, y1: number, x2: number, y2: number): boolean {
         if (!this.isConnected()) return false;
-        let array = new ArrayBuffer(9);
-        let dv = new DataView(array);
+        const array = new ArrayBuffer(9);
+        const dv = new DataView(array);
+
         dv.setUint8(0, 3);
         dv.setUint16(1, x1, true);
         dv.setUint16(3, y1, true);
@@ -457,8 +458,7 @@ class Client extends EventEmitter.EventEmitter {
         // @ts-ignore
         this.ws.send(array);
 
-        this.position.x = x2;
-        this.position.y = y2;
+        this.setPosition(x2, y2);
         return true;
     }
 }

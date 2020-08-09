@@ -3,9 +3,17 @@
 <head>
     <title><%= htmlWebpackPlugin.options.title %></title>
     <style>
+        
+    </style>
+    <meta name="description" content="Collaborate (or not) with other cursors to progress further." />
+    <meta name="keywords"
+        content="game, webgame, web game, html5, mmo, flash, cursor, pointer, cursors, mouse, pointers, mathias377" />
+    <meta name="robots" content="index, follow" />
+    <!-- <script type="text/javascript" src="https://c.n.m28.io/sdk.js"></script> -->
+    <style>
         @font-face {
             font-family: 'NovaSquare';
-            src: url('./fonts/NovaSquare.ttf');
+            src: url(<%= require('./fonts/NovaSquare.ttf') %>);
         }
 
         a {
@@ -13,12 +21,6 @@
             text-decoration: none;
         }
     </style>
-    <meta name="description" content="Collaborate (or not) with other cursors to progress further." />
-    <meta name="keywords"
-        content="game, webgame, web game, html5, mmo, flash, cursor, pointer, cursors, mouse, pointers, mathias377" />
-    <meta name="robots" content="index, follow" />
-    <script type="text/javascript" src="https://c.n.m28.io/sdk.js"></script>
-
 
 </head>
 

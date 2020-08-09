@@ -30,9 +30,7 @@ export function isInsideObject(x: number, y: number, obj: LevelObject) {
 }
 
 export function isStuckAt(x: number, y: number, grid: Uint8Array[]): boolean {
-    if (!isInsideMap(x, y)) return true;    
-    
-    return !!grid[y][x];
+    return !isInsideMap(x, y) || !!grid[y][x];
 }
 
 /*export function shortGrid(grid: Uint8Array[], gridSpace: number) {
@@ -41,10 +39,10 @@ export function isStuckAt(x: number, y: number, grid: Uint8Array[]): boolean {
     const shortHeight = realHeight / gridSpace;
 
     for (let y = 0; y < shortHeight; y++) {
-        const array = new Uint8Array(shortWidth);
-        shortGrid.push(array);
+        const array = shortGrid[y] = new Uint8Array(shortWidth);
+        const array2 = grid[y * gridSpace];
         for (let x = 0; x < shortWidth; x++) {
-            array[x] = grid[y / gridSpace][x / gridSpace];
+            array[x] = array2[x * gridSpace];
         }
     }
 
@@ -58,7 +56,9 @@ export function levelObjectsToGrid(LevelObjects: LevelObject[]) {
         const array = new Uint8Array(realWidth); // should work for pathfinding.js
         grid.push(array);
         for (let x = 0; x < realWidth; x++) {
-            if((LevelObjects.find(obj => isInsideObject(x, y, obj))?.type) === 1) array[x] = 1;
+            if(LevelObjects.find(
+                obj => isInsideObject(x, y, obj) && obj.type === 1)
+            ) array[x] = 1;
         }
     }
     
@@ -93,6 +93,7 @@ export function calculateGridSpace(levelObjects: LevelObject[]) {
     return grid
 }
 
+
 export function* walk(x1: number, y1: number, x2: number, y2: number) {
     let dx =  Math.abs(x2 - x1), sx = x1 < x2 ? 1 : -1;
 	let dy = -Math.abs(y2 - y1), sy = y1 < y2 ? 1 : -1;
@@ -108,13 +109,12 @@ export function* walk(x1: number, y1: number, x2: number, y2: number) {
 	}
 }
 
-export function unStuck(oldPosition: Point, newPosition: Point, grid: Uint8Array[]) {
-    let {x: oldX, y: oldY} = oldPosition;
-    let {x: newX, y: newY} = newPosition;
+export function unStuck({x: oldX, y: oldY}: Point, {x: newX, y: newY}: Point, grid: Uint8Array[]) {
     let lastPos = [oldX, oldY];
     let collides = false;
 
     for(let pos of walk(oldX, oldY, newX, newY)) {
+        
         if(isStuckAt(pos[0], pos[1], grid)) {
             collides = true;
             break;
@@ -177,5 +177,5 @@ export function sleep(ms: number) {
 export async function getCursorsServer() {
     const info = await findServerPreference("cursors");
     
-    return info && info[0] ? infoToIP(info) : defaultURL;
+    return info && info[0] ? infoToIP(info[0]) : defaultURL;
 }

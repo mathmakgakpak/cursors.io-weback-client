@@ -1,10 +1,8 @@
 // should work
-// but also i recognized that this lib is died m28 doesn't use it anymore
-import { sleep } from './utils';
-
+// but also i recognized that this lib is died and m28 doesn't use it anymore
 
 let BASE_URL = "https://api.n.m28.io";
-const isSecure = window.location.protocol != "http:";
+const isSecure = window.location.protocol === "http:";
 const protocol = (isSecure ? "wss:" : "ws:");
 
 interface Options {
@@ -33,9 +31,8 @@ export function findServers(endpoint: string, options: Options = {}) {
 }
 
 export function infoToIP(info: Info) {
-    const host = isSecure ? (info.id + ".s.m28n.net") : (info.ipv4 || ("[" + info.ipv6 + "]") + ":2828");
-
-    return protocol + "//" + host;
+    const host = isSecure ? (info.id + ".s.m28n.net") : (info.ipv4 || ("[" + info.ipv6 + "]"));
+    return protocol + "//" + host + ":2828";
 }
 
 export function findRegionPreference(regions: string[], options: Options = {}): Promise<any> { // i don't really know if it works
@@ -47,20 +44,18 @@ export function findRegionPreference(regions: string[], options: Options = {}): 
         let points: any = {};
         let wss: WebSocket[] = [];
         for (let region in r.servers) {
-            // (function (region) { // why
-            if (!regions.includes(region)) continue; // return
+            if (!regions.includes(region)) continue;
 
             let info = r.servers[region];
-            let host = isSecure ? (info.id + ".s.m28n.net") : (info.ipv4 || ("[" + info.ipv6 + "]"));
-
-            let ws = new WebSocket(protocol + "//" + host);
+            
+            let ws = new WebSocket(infoToIP(info));
             ws.binaryType = 'arraybuffer';
 
-            ws.onopen = () => {ws.send(new Uint8Array([0x00]).buffer)}; // removes return
+            ws.onopen = () => {ws.send(new Uint8Array([0x00]).buffer)};
 
-            ws.onmessage = function (message) { // illegal spam test
+            ws.onmessage = message => {
                 let u8 = new Uint8Array(message.data);
-                if (u8[0] == 0x00) {
+                if (u8[0] == 0x00) { // basically this is 0
                     points[region] = (points[region] || 0) + 1;
 
                     // @ts-ignore
@@ -81,7 +76,6 @@ export function findRegionPreference(regions: string[], options: Options = {}): 
                 }
             }
             wss.push(ws);
-            // })(region);
         }
 
         if (wss.length == 0) return reject("No latency servers in selected regions");
@@ -98,7 +92,7 @@ export function findRegionPreference(regions: string[], options: Options = {}): 
                     ws.onerror = null;
                     ws.onclose = null;*/ // why
                     wss[i].close();
-                } catch (e) { }
+                } catch (e) {}
             }
             let arr = [];
             for (let region in points) arr.push({
