@@ -1,3 +1,4 @@
+# maybe i will back to this project someday
 # cursors.io webpack client
 This is my first webpack project so don't kill me plz
 ## Status
