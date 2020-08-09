@@ -2,9 +2,9 @@
 This is my first webpack project so don't kill me plz
 ## Status
 ### canvas renderer
-almost finished
+finished
 ### client
-almost finished
+i think that finished
 ### elements
 finished
 ### game settings
@@ -22,4 +22,4 @@ finished
 ### types
 finished?
 ### utils
-probably not finished
+finished
