@@ -1,5 +1,5 @@
 // should work
-// but also i recognized that this lib is died and m28 doesn't use it anymore
+// whyyyyyyyyyyy did i do this
 
 let BASE_URL = "https://api.n.m28.io";
 const isSecure = window.location.protocol === "http:";
@@ -165,6 +165,7 @@ function ajax(url: string, method: string, body?: string): Promise<any> { // :dr
             try {
                 obj = JSON.parse(r.responseText);
             } catch (e) {
+                // @ts-ignore
                 return reject("Failed to parse body. Error: \"" + (e.message || e).toString() + "\". Content: " + r.responseText);
             }
             if (r.status >= 200 && r.status <= 299 && !obj.error) {

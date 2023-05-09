@@ -8,15 +8,21 @@ import log from './sexylogs';
 import r, { renderDoNotEmbedSite } from './canvasRenderer';
 import { PointBob } from './types';
 import browserRequire from './browserRequire';
+
 // https://github.com/qiao/PathFinding.js you can use it for making cheats but you will need to rewrite some things in client
 
 // @ts-ignore
 window.require = PublicAPI.require = browserRequire;
 
+// @ts-ignore
 PublicAPI.srcFiles = process.env.SRC_FILES;
+// @ts-ignore
 PublicAPI.build = process.env.BUILD;
+// @ts-ignore
 PublicAPI.version = process.env.VERSION;
+// @ts-ignore
 PublicAPI.productionBuild = process.env.PRODUCTION_BUILD;
+
 
 // @ts-ignore
 document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock || document.webkitExitPointerLock;
@@ -51,7 +57,7 @@ mouseEvents.on("mousedown", (mousePos: PointBob, event: MouseEvent) => {
     if(!settings.noCursorLock && getPointerLockElement() !== canvas) canvas.requestPointerLock();
 
     if((event.ctrlKey || event.shiftKey) && !settings.disableDrawings) {
-        let unstucked = unStuck(client.position, mousePos, client.grid);
+        let unstucked = unStuck(client.position, mousePos, client.solidMap);
 
         client.draw(client.position.x, client.position.y, unstucked.x, unstucked.y);
     } else if(client.position.x === mousePos.x && client.position.y === mousePos.y) {
@@ -62,7 +68,7 @@ mouseEvents.on("mousedown", (mousePos: PointBob, event: MouseEvent) => {
 mouseEvents.on("mousemove", (mousePos: PointBob, event: MouseEvent) => {
     if(client.ws?.readyState !== 1) return;
     //console.log(client.position, mousePos);
-    let unStucked = unStuck(client.position, mousePos, client.grid);
+    let unStucked = unStuck(client.position, mousePos, client.solidMap);
     //console.log(unStucked)
     client.move(unStucked.x, unStucked.y);
 });

@@ -4,7 +4,8 @@
 import { mapSize } from './gameSettings';
 import { settings } from './main';
 import { getPointerLockElement } from './utils';
-import { LevelObject, Click, Drawing, PointBob } from './types';
+import { Click, Line, PointBob } from './types';
+import { LevelObject } from './classes/LevelObjects';
 import { canvas } from './elements';
 // import alphabet from './alphabet';
 
@@ -19,8 +20,8 @@ const { width, realWidth, height, realHeight } = mapSize;
 
 
 export const ctx = <CanvasRenderingContext2D>canvas.getContext("2d");
-const cursorImage: HTMLImageElement = new Image;
-cursorImage.src = require("../img/cursor.png"); // should load
+const cursorImage = new Image;
+ cursorImage.src = "https://cursors.uvias.com/img/cursor.png"; // fix it it is a problem with file loader prob
 
 export const rendererSettings = {
     maxRenderedPlayers: 100,
@@ -152,23 +153,34 @@ function renderLevelObjects(levelObjects: /*LevelObject*/any[]) { // obj.width c
         }
     });
 }
-function renderDrawings(drawings: Drawing[]) {
+function renderDrawings(lines: Line[]) {
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 1;
     let now = Date.now();
-    drawings.forEach(drawing => {
-        ctx.globalAlpha = 0.3 * ((drawing.removedAt - now) / rendererSettings.drawingRenderTime);
+    lines.forEach((line, i) => {
+        const degreeOfDecay = (line.removeAt - now) / rendererSettings.drawingRenderTime;
+
+        if(degreeOfDecay < 0) {
+            lines.splice(i, 1);
+            return;
+        }
+
+        ctx.globalAlpha = 0.3 * degreeOfDecay;
         ctx.beginPath();
-        ctx.moveTo(drawing.x1, drawing.x2);
-        ctx.lineTo(drawing.x2, drawing.y2);
+        ctx.moveTo(line.x1, line.x2);
+        ctx.lineTo(line.x2, line.y2);
         ctx.stroke();
     });
 }
 function renderClicks(clicks: Click[]) {
     // ctx.strokeStyle = "#000";
     let now = Date.now();
-    clicks.forEach(click => {
-        let radius = (click.removedAt - now) / rendererSettings.clickRenderTime;
+    clicks.forEach((click, i) => {
+        let radius = (click.removeAt - now) / rendererSettings.clickRenderTime;
+        if(radius < 0) {
+            clicks.splice(i, 1);
+            return;
+        }
         let stage = (1 - 2 * radius) * 0.3;
         radius *= 50;
 
@@ -300,7 +312,7 @@ export function renderDoNotEmbedSite() {
 export default function render(
      wsState: number | undefined,
      levelObjects: LevelObject[],
-     drawings: Drawing[],
+     drawings: Line[],
      clicks: Click[],
      onlinePlayers: number,
      playersOnLevel: number,

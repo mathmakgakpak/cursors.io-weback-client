@@ -39,6 +39,13 @@ module.exports = async (env = {}) => {
         entry: {
             client_out: path.resolve(srcDir, "ts", "main.ts")
         },
+        devServer: {
+            static: {
+              directory: path.resolve(__dirname, 'build'),
+              
+            },
+            watchFiles: ['src/**/*.ts', 'build/**/*'],
+          },
         output: {
             filename: "[name].js",
             path: path.resolve(__dirname, 'build'),
@@ -64,7 +71,7 @@ module.exports = async (env = {}) => {
                 }]
             },
             {
-                include: path.resolve(srcDir, 'img'),
+                test: /\.(png|jpe?g|gif)$/i,
                 use: [{
                     loader: 'file-loader',
                     options: {

@@ -1,12 +1,13 @@
 // @ats-nocheck
 
 import { mapSize, defaultURL } from './gameSettings'
-import { LevelObject, Point } from './types';
+ import { Point } from './types';
+import { LevelObject } from './classes/LevelObjects';
 import { findServerPreference, infoToIP }/* * as m28n*/ from './m28n';
-
+import SolidMap from './SolidMap';
 const { realWidth, realHeight } = mapSize;
 
-
+// Parses cursors.io level "M" object to my own this level object // i needed it to test rendering 
 export function parse(levelObjects: any) {
     return levelObjects.map((obj: any) => {
         if (obj.color) obj.color = rgbToHex(obj.color.r, obj.color.g, obj.color.b);
@@ -18,20 +19,17 @@ export function parse(levelObjects: any) {
     })
 }
 
-export function isInsideMap(x: number, y: number) {
-    return x >= 0 && x < realWidth &&
-        y >= 0 && y < realHeight;
-}
 
-export function isInsideObject(x: number, y: number, obj: LevelObject) {
-    // @ts-ignore
-    return x >= obj.x && x < obj.x + obj.width && // @ts-ignore: thiccccccccc
-        y >= obj.y && y < obj.y + obj.height;
-}
 
-export function isStuckAt(x: number, y: number, grid: Uint8Array[]): boolean {
-    return !isInsideMap(x, y) || !!grid[y][x];
-}
+// export function isInsideObject(x: number, y: number, obj: LevelObject) {
+//     // @ts-ignore
+//     // return x >= obj.x && x < obj.x + obj.width && // @ts-ignore: thiccccccccc
+//         // y >= obj.y && y < obj.y + obj.height;
+// }
+
+// export function isStuckAt(x: number, y: number, grid: Uint8Array[]): boolean {
+//     return !isInsideMap(x, y) || !!grid[y][x];
+// }
 
 /*export function shortGrid(grid: Uint8Array[], gridSpace: number) {
     let shortGrid = [];
@@ -49,27 +47,14 @@ export function isStuckAt(x: number, y: number, grid: Uint8Array[]): boolean {
     return shortGrid;
 }*/
 
-export function levelObjectsToGrid(LevelObjects: LevelObject[]) {
-    let grid = []; // new Uint8Array(realWidth * realHeight); nope
+// export 
 
-    for (let y = 0; y < realHeight; y++) {
-        const array = new Uint8Array(realWidth); // should work for pathfinding.js
-        grid.push(array);
-        for (let x = 0; x < realWidth; x++) {
-            if(LevelObjects.find(
-                obj => isInsideObject(x, y, obj) && obj.type === 1)
-            ) array[x] = 1;
-        }
-    }
-    
-    return grid;
-}
 
-export function calculateGridSpace(levelObjects: LevelObject[]) {
+export function calculateGridSpace(levelObjects: LevelObject[]) { // this is to make pathfinding between walls and collision checking faster
     let grid = 100;
     
     for (let length = levelObjects.length, i = 0; i < length; i++) {
-        if (grid <= 1) {
+        if (grid <= 1) { // if it can't find 
             grid = 1;
             break;
         }
@@ -82,7 +67,7 @@ export function calculateGridSpace(levelObjects: LevelObject[]) {
                 // @ts-ignore
                 shortHeight = levelObject.height / grid;
 
-            if (
+            if ( // 1.9 | 0 = 1 it truncates decimal point https://stackoverflow.com/questions/7641818/how-can-i-remove-the-decimal-part-from-javascript-number
                 (shortX | 0) !== shortX ||
                 (shortY | 0) !== shortY ||
                 (shortWidth | 0) !== shortWidth ||
@@ -90,11 +75,11 @@ export function calculateGridSpace(levelObjects: LevelObject[]) {
             ) grid--, i = 0;
         }
     }
-    return grid
+    return grid;
 }
 
 
-export function* walk(x1: number, y1: number, x2: number, y2: number) {
+export function* walk(x1: number, y1: number, x2: number, y2: number) { // it creates a line
     let dx =  Math.abs(x2 - x1), sx = x1 < x2 ? 1 : -1;
 	let dy = -Math.abs(y2 - y1), sy = y1 < y2 ? 1 : -1;
 	let err = dx + dy,
@@ -109,14 +94,13 @@ export function* walk(x1: number, y1: number, x2: number, y2: number) {
 	}
 }
 
-export function unStuck({x: oldX, y: oldY}: Point, {x: newX, y: newY}: Point, grid: Uint8Array[]) {
+export function unStuck({x: oldX, y: oldY}: Point, {x: newX, y: newY}: Point, solidMap: SolidMap) {
     let lastPos = [oldX, oldY];
-    let collides = false;
+    let collides: boolean | number[] = false;
 
-    for(let pos of walk(oldX, oldY, newX, newY)) {
-        
-        if(isStuckAt(pos[0], pos[1], grid)) {
-            collides = true;
+    for(const pos of walk(oldX, oldY, newX, newY)) {
+        if(solidMap.isPointSolid(pos[0], pos[1])) {
+            collides = pos;
             break;
         }
         lastPos = pos;
@@ -125,22 +109,23 @@ export function unStuck({x: oldX, y: oldY}: Point, {x: newX, y: newY}: Point, gr
     return {
         x: lastPos[0],
         y: lastPos[1],
-        collides
+        collides // if collides it returns an array with where exactly it collides
+        // TO-DO try to glow the wall which cursor collides with
     }
 }
-export function changeStateOfWall(wall: LevelObject, grid: Uint8Array[], state: number) {
-    // @ts-ignore
-    const x2 = wall.x + wall.width;
-    // @ts-ignore
-    const y2 = wall.y + wall.height;
+// export function changeStateOfWall(wall: LevelObject, grid: Uint8Array[], state: number) {
+//     // @ts-ignore
+//     const x2 = wall.x + wall.width;
+//     // @ts-ignore
+//     const y2 = wall.y + wall.height;
     
-    for(let y = wall.y; y < y2; y++) {
-        const array = grid[y];
-        for(let x = wall.x; x < x2; x++) {
-            array[x] = state;
-        }
-    }
-}
+//     for(let y = wall.y; y < y2; y++) {
+//         const array = grid[y];
+//         for(let x = wall.x; x < x2; x++) {
+//             array[x] = state;
+//         }
+//     }
+// }
 
 export function rgbToHex(r: number, g: number, b: number) {
     return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
@@ -160,7 +145,7 @@ export function generateRainbow(times: number = 32, frequency: number = 0.01) {
     return colors;
 }
 
-/*export function* rainbowGenerator(frequency: number = 0.1) {
+export function* rainbowGenerator(frequency: number = 0.1) {
     for(let i = 0;; i++) {
         let r = Math.sin(frequency * i + 0) * 127 + 128;
         let g = Math.sin(frequency * i + 2) * 127 + 128;
@@ -168,14 +153,16 @@ export function generateRainbow(times: number = 32, frequency: number = 0.01) {
 
         yield [r, g, b].map(x => Math.round(x));
     }
-}*/
+}
 
 export function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export async function getCursorsServer() {
-    const info = await findServerPreference("cursors");
+    return defaultURL;
+    location.href.replace("http", "ws")
+    // const info = await findServerPreference("cursors");
     
-    return info && info[0] ? infoToIP(info[0]) : defaultURL;
+    // return info && info[0] ? infoToIP(info[0]) : defaultURL;
 }

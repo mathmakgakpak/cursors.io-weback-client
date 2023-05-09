@@ -1,6 +1,11 @@
 import EventEmitter from 'events';
 
-export const PublicAPI = (<any>window).C = (<any>window).Cursors = <any>{};
+declare global {
+    var C: any;
+    var Cursors: any;
+  }
+
+export const PublicAPI = window.C = window.Cursors = <any>{};
 export const eventSys = new EventEmitter.EventEmitter();
 
 PublicAPI.emit = eventSys.emit.bind(eventSys);

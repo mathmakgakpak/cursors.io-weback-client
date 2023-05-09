@@ -1,10 +1,20 @@
-import EventEmitter from 'events';
-import { Click, Drawing, LevelObject, PointBob } from './types';
+import { EventEmitter } from 'events';
+import { Click, Line, PointBob } from './types';
 import { rendererSettings } from './canvasRenderer';
 import { defaultURL } from './gameSettings';
-import { changeStateOfWall, levelObjectsToGrid } from './utils';
+// import { changeStateOfWall, levelObjectsToGrid } from './utils';
 import log from './sexylogs';
-
+import {
+    LevelObject,
+    TextObject,
+    DebugObject,
+    WallObject,
+    TeleportObject,
+    CursorCounterObject,
+    ButtonObject,
+    ObjectTypes
+} from "./classes/LevelObjects"
+import SolidMap from './SolidMap';
 export {
     parseObjects,
     compareLevel,
@@ -12,15 +22,17 @@ export {
 }
 
 
-function updateClicksOrDrawings(clicksOrDrawings: Click[] | Drawing[]) {
-    let now = Date.now();
-    // @ts-ignore
-    return clicksOrDrawings.filter(x => x.removeAt < now);
-}
+// function updateClicksOrLines(clicksOrDrawings: Click[]): Click[];
+// function updateClicksOrLines(clicksOrDrawings: Line[]): Line[] {
+//     const now = Date.now();
+//     clicksOrDrawings.forEach(({removeAt}, i) => {
+//         if(removeAt < now) clicksOrDrawings.splice(i, 1);
+//     });
+// }
 
-function parseObjects(data: DataView, offset: number) {
+function parseObjects(data: DataView, offset: number): {levelObjects: LevelObject[], offset:number} {
     let count = data.getUint16(offset, true);
-    let objdata = [];
+    let levelObjects: LevelObject[] = [];
 
     offset += 2;
     for (let i = 0; i < count; ++i) {
@@ -31,25 +43,25 @@ function parseObjects(data: DataView, offset: number) {
         let type = data.getUint8(offset);
         offset++
 
-        let obj = objdata[i] = <LevelObject>{
-            id,
-            type
-        };
+        let obj: LevelObject;
         switch (type) {
-            case 0: { // text
+            case ObjectTypes.TEXT: { // text
+                obj = new TextObject;
                 obj.x = data.getUint16(offset, true);
                 obj.y = data.getUint16(offset + 2, true);
                 obj.size = data.getUint8(offset + 2 + 2);
                 obj.isCentered = !!data.getUint8(offset + 2 + 2 + 1);
                 offset += 2 + 2 + 1;
                 obj.content = "";
-                while (data.getUint8(++offset) !== 0) {
+                let char: number = 0;
+                while ((char = data.getUint8(++offset)) !== 0) {
                     obj.content += String.fromCharCode(data.getUint8(offset));
                 }
                 offset++;
                 break;
             }
-            case 1: { // wall
+            case ObjectTypes.WALL: { // wall
+                obj = new WallObject;
                 obj.x = data.getUint16(offset, true);
                 obj.y = data.getUint16(offset + 2, true);
                 obj.width = data.getUint16(offset + 2 + 2, true);
@@ -62,7 +74,8 @@ function parseObjects(data: DataView, offset: number) {
                 offset += 2 + 2 + 2 + 2 + 4;
                 break;
             }
-            case 2: { // exit/red thing
+            case ObjectTypes.TELEPORT: { // Teleport
+                obj = new TeleportObject;
                 obj.x = data.getUint16(offset, true);
                 obj.y = data.getUint16(offset + 2, true);
                 obj.width = data.getUint16(offset + 2 + 2, true);
@@ -71,7 +84,8 @@ function parseObjects(data: DataView, offset: number) {
                 offset += 2 + 2 + 2 + 2 + 1;
                 break;
             }
-            case 3: { // hover
+            case ObjectTypes.CURSOR_COUNTER: { // Cursor Counter
+                obj = new CursorCounterObject;
                 obj.x = data.getUint16(offset, true);
                 obj.y = data.getUint16(offset + 2, true);
                 obj.width = data.getUint16(offset + 2 + 2, true);
@@ -84,7 +98,8 @@ function parseObjects(data: DataView, offset: number) {
                 offset += 2 + 2 + 2 + 2 + 2 + 4;
                 break;
             }
-            case 4: { // button
+            case ObjectTypes.BUTTON: { // button
+                obj = new ButtonObject;
                 obj.x = data.getUint16(offset, true);
                 obj.y = data.getUint16(offset + 2, true);
                 obj.width = data.getUint16(offset + 2 + 2, true);
@@ -98,9 +113,28 @@ function parseObjects(data: DataView, offset: number) {
                 offset += 2 + 2 + 2 + 2 + 2 + 4;
                 break;
             }
+            case ObjectTypes.DEBUG_OBJECT: {
+                log.warn("Encountered a debug object try removing browser cache: Ctrl + R")
+                debugger;
+                
+                break;
+            }
+
+            default: throw new Error("Unknown object type: " + type);
         }
+
+        /*
+        https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#non-null-assertion-operator-postfix-
+        
+        https://stackoverflow.com/questions/60854745/ts2454-variable-value-is-used-before-being-assigned
+        */
+        obj!.id = id;
+        levelObjects[i] = obj!;
     }
-    return [objdata, offset];
+    return {
+        levelObjects,
+        offset
+    };
 }
 
 function compareLevel(prevLevels: any, level: LevelObject[]) {
@@ -114,7 +148,7 @@ function compareLevel(prevLevels: any, level: LevelObject[]) {
                 content: o.content
             });
         } else if (o.type === 1) { // walls
-            if (o.color === '#000000') compare.push({ // because other walls can be gone often
+            if (o.color === '#000000') compare.push({ // because other colored walls can be gone often
                 x: o.x,
                 y: o.y,
                 w: o.w,
@@ -157,7 +191,7 @@ interface Options {
     reconnect?: boolean
 }
 
-class Client extends EventEmitter.EventEmitter {
+class Client extends EventEmitter {
     public prevLevels: LevelObject[][] = [];
     public levelObjects: LevelObject[] = [];
     public options: Options = {};
@@ -166,18 +200,20 @@ class Client extends EventEmitter.EventEmitter {
         id: Player
     }
     */
-    public grid: Uint8Array[] = [];
-    public gridSpace: number = 100;
+    public solidMap: SolidMap = new SolidMap(0, 0);
+    // public gridSpace: number = 100;
 
     public playersOnLevel: number = 0;
     public usersOnline: number = 0;
-    // @ts-ignore
-    private ticks: number = 0;
-    // @ts-ignore: webpack ignores 
+
+    private lastAck: number = 0; // it has something to do with tcp FIN packet... It just verifies if everything you got is good
+/*
     #clicksAndDrawingsUpdateInterval: number = window.setInterval(() => {
-        this.clicks = updateClicksOrDrawings(this.clicks);
-        this.drawings = updateClicksOrDrawings(this.drawings);
-    }, 1);
+        this.clicks = updateClicksOrLines(this.clicks);
+        this.lines = updateClicksOrLines(this.lines);
+    }, 1); // TO-DO change to INTERP_TIME
+    */ // not needed as the renderer does that
+
     // #jobs: number = 0; // implementation for making bot system (drawText)
     public ws: WebSocket | undefined;
     public id: number = -1;
@@ -189,7 +225,7 @@ class Client extends EventEmitter.EventEmitter {
         canvasY: 0
     }
     public clicks: Click[] = [];
-    public drawings: Drawing[] = [];
+    public drawings: Line[] = [];
     constructor(options: Options = {}) {
         super();
 
@@ -211,27 +247,27 @@ class Client extends EventEmitter.EventEmitter {
         if (this.options.log) log[type](...args);
     }
     private resetVariables() {
-        this.players = {};
-        this.drawings = [];
-        this.clicks = [];
+        // this.players = {};
+        // this.drawings = [];
+        // this.clicks = [];
 
-        this.prevLevels = [];
-        this.levelObjects = [];
-        this.grid = [];
+        // this.prevLevels = [];
+        // this.levelObjects = [];
+        // this.grid = new Uint8Array(0);
 
-        this.position = {
-            x: 0,
-            y: 0,
-            canvasX: 0,
-            canvasY: 0
-        }
-        this.ticks = 0;
-        //this.jobs = 0;
-        this.level = -1;
-        this.id = -1;
-        this.gridSpace = 100;
-        this.usersOnline = 0;
-        this.playersOnLevel = 0;
+        // this.position = {
+        //     x: 0,
+        //     y: 0,
+        //     canvasX: 0,
+        //     canvasY: 0
+        // }
+        // this.ticks = 0;
+        // //this.jobs = 0;
+        // this.level = -1;
+        // this.id = -1;
+        // this.gridSpace = 100;
+        // this.usersOnline = 0;
+        // this.playersOnLevel = 0;
     }
     private setPosition(x: number, y: number) {
         this.position.x = x;
@@ -258,6 +294,7 @@ class Client extends EventEmitter.EventEmitter {
             const arrayBuffer = message.data;
             const len = arrayBuffer.length;
             const dv = new DataView(arrayBuffer);
+            const now = Date.now();
 
             this.emit("message", arrayBuffer);
 
@@ -267,14 +304,14 @@ class Client extends EventEmitter.EventEmitter {
                     this.emit("gotId");
                     break;
                 }
-                case 1: { // cursors updates draws and map changes
+                case 1: { // cursors updates lines and map changes
                     this.usersOnline = dv.getUint32(len - 4, true);
 
                     // cursors
                     let offset = 1;
                     let players: any = {};
-                    let newPlayers: any = {};
-                    let updatedPlayers: any = {};
+                    let newPlayers: any = [];
+                    let updatedPlayers: any = [];
                     let removedPlayers: any = {};
                     let count = this.playersOnLevel = dv.getUint16(offset, true);
 
@@ -320,15 +357,16 @@ class Client extends EventEmitter.EventEmitter {
                     offset += 2;
 
                     for (let i = 0; i < count; i++) {
+                        
                         clicks.push({
                             x: dv.getUint16(offset, true),
                             y: dv.getUint16(offset + 2, true),
-                            clickedAt: Date.now(),
-                            removedAt: Date.now() + rendererSettings.clickRenderTime
+                            clickedAt: now,
+                            removeAt: now + rendererSettings.clickRenderTime
                         });
                         offset += 2 + 2;
                     }
-
+                    // console.log("test", clicks)
                     this.emit("newClicks", clicks);
 
                     this.clicks = this.clicks.concat(clicks);
@@ -343,7 +381,7 @@ class Client extends EventEmitter.EventEmitter {
                         1)[0];
 
                         removedObjects.push(obj);
-                        if(obj.type === 1) changeStateOfWall(obj, this.grid, 0); // buttons are not vanishing but shit happens
+                        if(obj.type === 1) this.solidMap.setWallObject(obj, false); // buttons are not vanishing but shit happens
 
                         offset += 4;
                     }
@@ -351,18 +389,23 @@ class Client extends EventEmitter.EventEmitter {
 
                     // added objects
                     let a = parseObjects(dv, offset);
-                    let addedObjects = <LevelObject[]>a.shift();
-                    offset = <number>a.shift();
+                    let addedObjects:LevelObject[] = a.levelObjects;
+                    offset = a.offset;
+
+                    // it just doesn't work
+                    // {levelObjects: addedObjects, offset} = parseObjects(dv, offset);
+
+                    
                     this.emit("addedObjects", addedObjects);
 
-                    addedObjects.forEach(obj => {
+                    addedObjects.forEach(obj => { // that's what's fucked up
                         this.levelObjects.push(obj);
-                        if(obj.type === 1) changeStateOfWall(obj, this.grid, 1);
+                        if(obj.type === 1) this.solidMap.setWallObject(obj, true);
                     });
 
                     // drawings
                     count = dv.getUint16(offset, true);
-                    let drawings: Drawing[] = [];
+                    let drawings: Line[] = [];
 
                     offset += 2;
 
@@ -372,8 +415,8 @@ class Client extends EventEmitter.EventEmitter {
                             y1: dv.getUint16(offset + 2, true),
                             x2: dv.getUint16(offset + 2 + 2, true),
                             y2: dv.getUint16(offset + 2 + 2 + 2, true),
-                            drawedAt: Date.now(),
-                            removedAt: Date.now() + rendererSettings.drawingRenderTime
+                            drewAt: Date.now(),
+                            removeAt: Date.now() + rendererSettings.drawingRenderTime
                         });
                         offset += 2 + 2 + 2 + 2;
                     }
@@ -382,32 +425,44 @@ class Client extends EventEmitter.EventEmitter {
                     this.drawings = this.drawings.concat(drawings);
 
                     if (len >= offset + 4) {
-                        this.ticks = Math.max(this.ticks, dv.getUint32(offset, true));
+                        this.lastAck = Math.max(this.lastAck, dv.getUint32(offset, true));
                         offset += 4;
                     } else if (len >= offset + 2) {
-                        this.ticks = Math.max(this.ticks, dv.getUint16(offset, true));
+                        this.lastAck = Math.max(this.lastAck, dv.getUint16(offset, true));
                         offset += 2;
                     }
                     break;
                 }
-                case 4: {
+                case 4: { // New Level
+                    this.solidMap.resetMap();
                     this.setPosition(dv.getUint16(1, true), dv.getUint16(3, true));
-
-                    this.levelObjects = <LevelObject[]>parseObjects(dv, 5).shift();
-                    this.grid = levelObjectsToGrid(this.levelObjects);
+                    let {offset, levelObjects} = parseObjects(dv, 5);
+                    
+                    
+                    this.solidMap.setLevelObjects(this.levelObjects = levelObjects);
 
                     this.level = compareLevel(this.prevLevels, this.levelObjects);
+
+                    if (len >= offset + 4) {
+                        this.lastAck = Math.max(this.lastAck, dv.getUint32(5, true));
+                    } else if (len >= offset + 2) {
+                        this.lastAck = Math.max(this.lastAck, dv.getUint16(5, true));
+                    }
+
                     break;
                 }
-                case 5: {
-                    this.setPosition(dv.getUint16(1, true), dv.getUint16(3, true));
+                case 5: { // Collision error / Teleport
+                    this.setPosition(dv.getUint16(1, true), dv.getUint16(1 + 2, true));
 
-                    if (len >= 9) {
-                        this.ticks = Math.max(this.ticks, dv.getUint32(5, true));
-                    } else if (len >= 7) {
-                        this.ticks = Math.max(this.ticks, dv.getUint16(5, true));
+                    if (len >= 1 + 2 + 2 + 4) {
+                        this.lastAck = Math.max(this.lastAck, dv.getUint32(5, true));
+                    } else if (len >= 1 + 2 + 2 + 2) {
+                        this.lastAck = Math.max(this.lastAck, dv.getUint16(5, true));
                     }
                     break;
+                }
+                default: {
+                    console.debug("Unexpected packet: ", dv.getUint8(0));
                 }
             }
         }
@@ -423,7 +478,7 @@ class Client extends EventEmitter.EventEmitter {
         dv.setUint8(0, 1);
         dv.setUint16(1, x, true);
         dv.setUint16(3, y, true);
-        dv.setUint32(5, this.ticks, true);
+        dv.setUint32(5, this.lastAck, true);
         // @ts-ignore
         this.ws.send(array);
 
@@ -438,7 +493,7 @@ class Client extends EventEmitter.EventEmitter {
         dv.setUint8(0, 2);
         dv.setUint16(1, x, true);
         dv.setUint16(3, y, true);
-        dv.setUint32(5, this.ticks, true);
+        dv.setUint32(5, this.lastAck, true);
         // @ts-ignore
         this.ws.send(array);
 
