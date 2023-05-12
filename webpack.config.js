@@ -4,14 +4,15 @@ const fs = require('fs-extra');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const readWholeDir = require("./readwholedir.js");
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const packageJSON = require("./package.json");
 let VERSION = packageJSON.version;
 let BUILD = packageJSON.build;
 
-function addToVersion(version, number = 1) { // dumb
+function addToVersion(version, number = 1) { // unreadable
     let zeros = version.split(".");
-    for(let i = 0; i < zeros.length; i++) if(zeros[i] != 0) {
+    for (let i = 0; i < zeros.length; i++) if (zeros[i] != 0) {
         zeros = zeros.slice(0, i).join(".");
         break;
     }
@@ -24,7 +25,7 @@ module.exports = async (env = {}) => {
     const PRODUCTION_BUILD = !!env.production;
 
     if (PRODUCTION_BUILD) packageJSON.version = VERSION = addToVersion(VERSION);
-    
+
 
     /*const BUILD = +(await fs.readFile("./build.txt", {encoding: "utf8"})) + 1;
     await fs.writeFile("./build.txt", BUILD.toString());*/
@@ -39,57 +40,67 @@ module.exports = async (env = {}) => {
         entry: {
             client_out: path.resolve(srcDir, "ts", "main.ts")
         },
+
         devServer: {
             static: {
-              directory: path.resolve(__dirname, 'build'),
-              
+                directory: path.resolve(__dirname, 'build'),
+
             },
             watchFiles: ['src/**/*.ts', 'build/**/*'],
-          },
+        },
         output: {
             filename: "[name].js",
             path: path.resolve(__dirname, 'build'),
-            publicPath: PRODUCTION_BUILD ? '/' : './'
+            publicPath: PRODUCTION_BUILD ? '/' : './',
+            clean: PRODUCTION_BUILD || env.devclean,
         },
         resolve: {
-            extensions: ['.ts', '.tsx', '.js', '.json']
-        },
-        module: {
-            rules: [
-            {
-                include: path.resolve(srcDir, 'ts'),
-                loader: 'ts-loader',
-              },
-            {
-                include: path.resolve(srcDir, 'fonts'),
-                use: [{
-                    loader: 'file-loader',
-                    options: {
-                        outputPath: 'fonts/',
-                        name: '[name].[ext]'
-                    }
-                }]
+            extensions: ['*', '.ts', '.js', '.json'],
+            fallback: { // https://webpack.js.org/configuration/resolve/#resolvefallback
+                buffer: require.resolve('buffer'),
+                events: require.resolve('events'),
             },
-            {
-                test: /\.(png|jpe?g|gif)$/i,
-                use: [{
-                    loader: 'file-loader',
-                    options: {
-                        outputPath: 'img/',
-                        name: '[name].[ext]'
-                    }
-                }]
-            }
-            ]
-    
         },
-    
+        module: { // https://webpack.js.org/guides/asset-management/#loading-images
+            rules: [
+                
+                {
+                    include: path.resolve(srcDir, 'ts'),
+                    loader: 'ts-loader',
+                },
+                {
+                    test: /\.(css)$/, // https://stackoverflow.com/questions/53653652/how-to-force-webpack-to-put-the-plain-css-code-into-html-heads-style-tag
+                    use: [
+                        MiniCssExtractPlugin.loader,
+                        "css-loader",
+                    ]
+                },
+                {
+                    test: /\.(ttf)$/i,
+                    type: 'asset/resource',
+                    generator: {
+                        filename: "fonts/[name][ext]"
+                    },
+                },
+                {
+                    test: /\.(png|svg|jpg|jpeg|gif)$/i,
+                    type: 'asset/resource',
+                    generator: {
+                        filename: "img/[name][ext]"
+                    },
+                },
+                
+            ]
+
+        },
+
         plugins: [
+            new MiniCssExtractPlugin(),
             new ForkTsCheckerWebpackPlugin(),
             new HtmlWebpackPlugin({
-                title: 'cursors.io client by mathias377', // Cursors
+                title: 'Modded cursors.io client', // Cursors
                 inject: 'body',
-                template: path.resolve(srcDir, 'index.ejs'),
+                template: path.resolve(srcDir, 'index.html'),
                 favicon: path.resolve(srcDir, 'favicon.ico'),
                 minify: PRODUCTION_BUILD ? {
                     collapseWhitespace: true,
@@ -99,7 +110,7 @@ module.exports = async (env = {}) => {
                     removeStyleLinkTypeAttributes: true,
                     useShortDoctype: true,
                     minifyCSS: true
-                  } : {}
+                } : {}
             }),
             new webpack.EnvironmentPlugin({
                 PRODUCTION_BUILD,
@@ -110,9 +121,8 @@ module.exports = async (env = {}) => {
         ]
     };
 
-    if(PRODUCTION_BUILD || env.devclean) {
+    if (config.output.clean) {
         console.log(`Cleaning build dir: '${config.output.path}'`);
-        await fs.remove(config.output.path);
     }
 
     console.log(`${config.mode} build\nVersion: ${VERSION}\nBuild: ${BUILD}\n`);

@@ -1,7 +1,7 @@
 {
   "name": "cursors-client",
   "version": "0.7.1",
-  "build": 187,
+  "build": 236,
   "description": "cursors.io client",
   "main": "src/js/main.js",
   "scripts": {
@@ -15,12 +15,16 @@
   "author": "mathias377",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^20.1.1",
+    "@types/node": "^20.1.2",
+    "css-loader": "^6.7.3",
     "file-loader": "^6.2.0",
     "fs-extra": "^11.1.1",
+    "html-loader": "^4.2.0",
     "html-webpack-plugin": "^5.5.1",
+    "mini-css-extract-plugin": "^2.7.5",
     "script-ext-html-webpack-plugin": "^2.1.5",
     "style-loader": "^3.3.2",
+    "template-ejs-loader": "^0.9.4",
     "ts-loader": "^9.4.2",
     "typescript": "^5.0.4",
     "webpack-cli": "^5.1.0",
@@ -32,6 +36,6 @@
     "fork-ts-checker-webpack-plugin": "^8.0.0",
     "npm-check-updates": "^16.10.11",
     "regenerator-runtime": "^0.13.5",
-    "webpack": "^5.82.0"
+    "webpack": "^5.82.1"
   }
 }

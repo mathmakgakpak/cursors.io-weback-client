@@ -5,27 +5,19 @@ import { canvas } from './elements';
 import { Client } from './Client';
 import { getCursorsServer, unStuck, getPointerLockElement } from './utils';
 import log from './sexylogs';
-import r, { renderDoNotEmbedSite } from './canvasRenderer';
+import RenderFrame, { renderDoNotEmbedSite } from './canvasRenderer';
 import { PointBob } from './types';
-import browserRequire from './browserRequire';
+
+import "../style.css";
 
 // https://github.com/qiao/PathFinding.js you can use it for making cheats but you will need to rewrite some things in client
 
-// @ts-ignore
-window.require = PublicAPI.require = browserRequire;
 
-// @ts-ignore
-PublicAPI.srcFiles = process.env.SRC_FILES;
-// @ts-ignore
-PublicAPI.build = process.env.BUILD;
-// @ts-ignore
-PublicAPI.version = process.env.VERSION;
-// @ts-ignore
-PublicAPI.productionBuild = process.env.PRODUCTION_BUILD;
+
 
 
 // @ts-ignore
-document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock || document.webkitExitPointerLock;
+// document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock || document.webkitExitPointerLock;
 
 export const settings = PublicAPI.settings = new Settings();
 
@@ -49,7 +41,7 @@ async function connect() {
     client.makeSocket();
 }
 
-// @ts-ignore
+
 mouseEvents.on("mousedown", (mousePos: PointBob, event: MouseEvent) => {
     if(gettingIp) return;
     if(!client.ws) return connect();
@@ -63,6 +55,8 @@ mouseEvents.on("mousedown", (mousePos: PointBob, event: MouseEvent) => {
     } else if(client.position.x === mousePos.x && client.position.y === mousePos.y) {
         client.click();
     }
+
+    return;
 });
 
 mouseEvents.on("mousemove", (mousePos: PointBob, event: MouseEvent) => {
@@ -81,8 +75,14 @@ window.setInterval(() => {
 }, 1000);
 
 function render() {
-    r(client.ws?.readyState, client.levelObjects, client.drawings, client.clicks, client.usersOnline, client.playersOnLevel, client.level, FPS, client.players, client.position, mousePos); // oh shit this is so long
+    try {
+        RenderFrame(client.ws?.readyState, client.levelObjects, client.drawings, client.clicks, client.usersOnline, client.playersOnLevel, client.level, FPS, client.players, client.position, mousePos);
     _FPS++;
+    } catch(e) {
+        log.error("Rendering error: ", e);
+    }
+    
+
     window.requestAnimationFrame(render);
 }
 window.requestAnimationFrame(render);

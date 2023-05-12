@@ -1,7 +1,7 @@
 import { canvas } from './elements';
 import { getPointerLockElement } from './utils'
 import { mapSize } from './gameSettings'
-import { EventEmitter } from 'events';
+import EventEmitter from 'events';
 import { PointBob } from './types';
 
 const mouseEvents = new EventEmitter();
@@ -39,10 +39,8 @@ canvas.addEventListener("mousemove", event => {
     // mousePos.oldY = mousePos.y;
 
     if(getPointerLockElement() === canvas) { 
-        // @ts-ignore
-        mousePos.canvasX += event.movementX || event.mozMovementX || event.webkitMovementX || 0; // 0 || undefined || undefined || 0 // i want 0
-        // @ts-ignore
-        mousePos.canvasY += event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+        mousePos.canvasX += event.movementX;
+        mousePos.canvasY += event.movementY;
     
         if(mousePos.canvasX > width) setPositionX(width);
         else if(mousePos.canvasX < 0) setPositionX(0);

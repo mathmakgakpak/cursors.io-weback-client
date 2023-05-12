@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import EventEmitter from 'events';
 import { Click, Line, PointBob } from './types';
 import { rendererSettings } from './canvasRenderer';
 import { defaultURL } from './gameSettings';

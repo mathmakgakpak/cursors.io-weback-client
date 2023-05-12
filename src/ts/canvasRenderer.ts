@@ -7,6 +7,9 @@ import { getPointerLockElement } from './utils';
 import { Click, Line, PointBob } from './types';
 import { LevelObject } from './classes/LevelObjects';
 import { canvas } from './elements';
+
+// https://stackoverflow.com/questions/43638454/webpack-typescript-image-import?rq=1
+import cursor_Image from "../img/cursor.png";
 // import alphabet from './alphabet';
 
 //export { renderState, renderLevelObjects, renderDrawings, renderClicks, renderHUD, renderPlayers, renderMainPlayer }
@@ -21,7 +24,7 @@ const { width, realWidth, height, realHeight } = mapSize;
 
 export const ctx = <CanvasRenderingContext2D>canvas.getContext("2d");
 const cursorImage = new Image;
- cursorImage.src = "https://cursors.uvias.com/img/cursor.png"; // fix it it is a problem with file loader prob
+cursorImage.src = cursor_Image;
 
 export const rendererSettings = {
     maxRenderedPlayers: 100,
@@ -309,7 +312,7 @@ export function renderDoNotEmbedSite() {
 6. players
 7. main cursor
 */
-export default function render(
+export default function RenderFrame(
      wsState: number | undefined,
      levelObjects: LevelObject[],
      drawings: Line[],

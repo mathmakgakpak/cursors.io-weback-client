@@ -1,0 +1,9 @@
+@font-face {
+    font-family: 'NovaSquare';
+    src: url('./fonts/NovaSquare.ttf');
+}
+
+a {
+    color: #0000AA;
+    text-decoration: none;
+}

@@ -1,10 +1,7 @@
 {
   "compilerOptions": {
-    "allowSyntheticDefaultImports": true,
-    "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
     "esModuleInterop": true,
-    "allowJs": true,
     "target": "ES6",
     "module": "ES2022",
     "strict": true,
@@ -12,6 +9,7 @@
     "downlevelIteration": true
   },
   "include": [
-    "src/ts/*"
+    "src/ts/*",
+    "index.d.ts"
   ]
 }
