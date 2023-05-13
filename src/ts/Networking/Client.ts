@@ -1,19 +1,11 @@
 import EventEmitter from 'events';
 import { Line, PointBob } from '../types';
 import Click from "../classes/Click";
-
-import { rendererSettings } from '../canvasRenderer';
-import { defaultURL } from '../gameSettings';
+import { rendererSettings, defaultURL } from '../gameSettings';
 // import { changeStateOfWall, levelObjectsToGrid } from './utils';
 import log from '../sexylogs';
 import {
     LevelObject,
-    TextObject,
-    DebugObject,
-    WallObject,
-    TeleportObject,
-    CursorCounterObject,
-    ButtonObject,
     ObjectTypes
 } from "../classes/LevelObjects"
 import SolidMap from '../SolidMap';
@@ -249,7 +241,7 @@ class Client extends EventEmitter {
                         this.clicks.push(click);
                         offset += 2 + 2;
                     }
-                    if(this.clicks.length) console.log("test", this.clicks);
+
                     if(clicks.length) this.emit("newClicks", clicks);
 
 
@@ -298,8 +290,8 @@ class Client extends EventEmitter {
                             y1: dv.getUint16(offset + 2, true),
                             x2: dv.getUint16(offset + 2 + 2, true),
                             y2: dv.getUint16(offset + 2 + 2 + 2, true),
-                            drewAt: Date.now(),
-                            removeAt: Date.now() + rendererSettings.drawingRenderTime
+                            drewAt: now,
+                            removeAt: now + rendererSettings.lineRenderDuration
                         });
                         offset += 2 + 2 + 2 + 2;
                     }

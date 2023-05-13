@@ -28,7 +28,7 @@ export function parsePlayers(dv: DataView, offset: number, players: Players, ign
     const updatedPlayers: Players = {}; // checks if the player existed before in "players" variable
     const movedPlayers: Players = {}; // if player did exist and their position has changed they go here
     const newPlayers: Players = {}; // if they didn't exist they go here
-    
+    const removedPlayers: Players = {}; // if the player was in the players variable but he doesn't exist in the updatedPlayers variable he is put here
     
     
     for (let i = 0; i < count; i++) {
@@ -57,8 +57,6 @@ export function parsePlayers(dv: DataView, offset: number, players: Players, ign
             newPlayers[id] = players[id] = parsedPlayer;
         }
     }
-
-    const removedPlayers: Players = {}; // if the player was in the players variable but he doesn't exist in the updatedPlayers variable he is put here
 
     for(const id in players) {
         if(!parsedPlayers[id]) {

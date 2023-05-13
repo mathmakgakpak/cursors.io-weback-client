@@ -1,11 +1,12 @@
-import { rendererSettings } from "../canvasRenderer";
+import { rendererSettings } from "../gameSettings";
+const clickRenderTime = rendererSettings.clickRenderduration
 
 export default class Click {
     public removeAt: number;
     constructor(public x: number, public y: number,
         public clickedAt: number
     ) {
-        this.removeAt = clickedAt + rendererSettings.clickRenderTime;
+        this.removeAt = clickedAt + clickRenderTime;
     }
     isRemoved(now: number = Date.now()) {
         return this.removeAt < now;

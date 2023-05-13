@@ -3,9 +3,7 @@
 import { mapSize, defaultURL } from './gameSettings'
  import { Point } from './types';
 import { LevelObject } from './classes/LevelObjects';
-import { findServerPreference, infoToIP }/* * as m28n*/ from './m28n';
 import SolidMap from './SolidMap';
-const { realWidth, realHeight } = mapSize;
 
 // Parses cursors.io level "M" object to my own this level object // i needed it to test rendering 
 export function parse(levelObjects: any) {
@@ -131,8 +129,7 @@ export function rgbToHex(r: number, g: number, b: number) {
     return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
 }
 
-// @ts-ignore
-export const getPointerLockElement = () => document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement;
+
 
 export function generateRainbow(times: number = 32, frequency: number = 0.01) {
     let colors = [];
