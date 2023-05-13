@@ -2,7 +2,7 @@ import { eventSys, PublicAPI } from './global';
 import { Settings } from './Settings';
 import mouseEvents, { mousePos } from './mouse';
 import { canvas } from './elements';
-import { Client } from './Client';
+import { Client } from './Networking/Client';
 import { getCursorsServer, unStuck, getPointerLockElement } from './utils';
 import log from './sexylogs';
 import RenderFrame, { renderDoNotEmbedSite } from './canvasRenderer';
@@ -14,9 +14,6 @@ import "../style.css";
 
 
 
-
-
-// @ts-ignore
 // document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock || document.webkitExitPointerLock;
 
 export const settings = PublicAPI.settings = new Settings();
@@ -34,7 +31,7 @@ let gettingIp = false;
 async function connect() {
     if(gettingIp) return;
     gettingIp = true;
-    // websocket proxy search on github
+    // search websocket proxy on github
     client.options.ws = /*`ws://localhost:8080/?target=${*/await getCursorsServer()/*}&origin=http://cursors.io`*/;
     gettingIp = false;
 

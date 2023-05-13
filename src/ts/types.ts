@@ -16,12 +16,7 @@ export interface Line {
     removeAt: number;
 }
 
-export interface Click {
-    x: number;
-    y: number;
-    clickedAt: number;
-    removeAt: number;
-}
+
 
 
 export interface Point {

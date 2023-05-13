@@ -4,12 +4,14 @@
 import { mapSize } from './gameSettings';
 import { settings } from './main';
 import { getPointerLockElement } from './utils';
-import { Click, Line, PointBob } from './types';
+import { Line, PointBob } from './types';
+import Click from "./classes/Click";
 import { LevelObject } from './classes/LevelObjects';
 import { canvas } from './elements';
 
 // https://stackoverflow.com/questions/43638454/webpack-typescript-image-import?rq=1
 import cursor_Image from "../img/cursor.png";
+import { Players } from './classes/Player';
 // import alphabet from './alphabet';
 
 //export { renderState, renderLevelObjects, renderDrawings, renderClicks, renderHUD, renderPlayers, renderMainPlayer }
@@ -132,7 +134,7 @@ function renderLevelObjects(levelObjects: /*LevelObject*/any[]) { // obj.width c
 
             ctx.fillText(text, x, y);
             ctx.globalAlpha = 1;
-        } else if(obj.type === 4) { // button TODO fix it later
+        } else if(obj.type === 4) { // button TO-DO fix it later
             ctx.fillStyle = obj.color;
             ctx.fillRect(x, y, obj.width * 2, obj.height * 2);
 
@@ -210,9 +212,9 @@ function renderHUD(onlinePlayers: number, playersOnLevel: number, actualLevel: n
     
     ctx.fillStyle = `hsl(${hue()}, 100%, 50%)`
 
-    drawText("Client made by mathias377#3326", 10, 12 * 1.3); // code gets optimized later
+    drawText("Client made by felpcereti#9857", 10, 12 * 1.3); // code gets optimized by webpack
     
-    ctx.fillStyle = "#FFF";
+    ctx.fillStyle = "#fff";
     
     drawText(FPS + " FPS", 10, 12 * 2 * 1.3);
     
@@ -244,19 +246,19 @@ function renderHUD(onlinePlayers: number, playersOnLevel: number, actualLevel: n
     drawText(text, x, y);
 }
 
-function renderPlayers(players: any) {
-    // 4 is shadow
+function renderPlayers(players: Players) {
+    
     ctx.font = "12px NovaSquare";
     ctx.fillStyle = "#000";
 
     let i = 0;
-    for(let ii in players) {
+    for(const id in players) {
         if(i > rendererSettings.maxRenderedPlayers) break;
-        let player = players[ii];
+        let player = players[id];
         let x = player.x * 2;
         let y = player.y * 2;
-        ctx.drawImage(cursorImage, x - 4, y - 4);
-        ctx.fillText(<string>player.id, x + 16, y + 24);
+        ctx.drawImage(cursorImage, x - 4, y - 4); // 4 is shadow
+        ctx.fillText(id, x + 16, y + 24);
         i++;
     }
 }
@@ -291,7 +293,7 @@ function renderMainPlayer({canvasX: px, canvasY: py}: PointBob, {canvasX: mx, ca
 
 
 export function renderDoNotEmbedSite() {
-    ctx.fillStyle = "#000000";
+    ctx.fillStyle = "#000";
     ctx.font = "35px NovaSquare";
     ctx.fillText("Please do not embed our website, thank you.", 400 - ctx.measureText("Please do not embed our website, thank you.").width / 2, 300);
     ctx.font = "16px NovaSquare";

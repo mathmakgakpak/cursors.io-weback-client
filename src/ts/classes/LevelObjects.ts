@@ -44,12 +44,10 @@ export class LevelObjectStub {
 
 export class TextObject extends LevelObjectStub {
     readonly type = ObjectTypes.TEXT;
-    size: number = 0;
+    fontSize: number = 0;
     isCentered: boolean = false;
     content: string = "";
-    constructor() {
-        super();
-    }
+
 }
 
 export class WallObject extends LevelObjectStub {
@@ -58,9 +56,7 @@ export class WallObject extends LevelObjectStub {
     height: number = 0;
 
     color: string = "#000000";
-    constructor() {
-        super();
-    }
+
 }
 export class TeleportObject extends LevelObjectStub {
     readonly type = ObjectTypes.TELEPORT;
@@ -68,9 +64,7 @@ export class TeleportObject extends LevelObjectStub {
     height: number = 0;
 
     isBad: boolean = false;
-    constructor() {
-        super();
-    }
+
 }
 
 export class CursorCounterObject extends LevelObjectStub {
@@ -80,9 +74,7 @@ export class CursorCounterObject extends LevelObjectStub {
     
     color: string = "#000000";
     count: number = 0;
-    constructor() {
-        super();
-    }
+
 }
 export class ButtonObject extends LevelObjectStub {
     readonly type = ObjectTypes.BUTTON;
@@ -92,10 +84,8 @@ export class ButtonObject extends LevelObjectStub {
     color: string = "#000000";
     count: number = 0;
     
-    lastClickAt: number = 0;
-    constructor() {
-        super();
-    }
+    lastClickAt: number = 0; // TO-DO set this somewhere
+
 }
 export class DebugObject {
     readonly type = ObjectTypes.DEBUG_OBJECT;
