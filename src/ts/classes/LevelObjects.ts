@@ -84,7 +84,7 @@ export class ButtonObject extends LevelObjectStub {
     color: string = "#000000";
     count: number = 0;
     
-    lastClickAt: number = 0; // TO-DO set this somewhere
+    lastClickAt: number = 0; // TODO: set this somewhere
 
 }
 export class DebugObject {

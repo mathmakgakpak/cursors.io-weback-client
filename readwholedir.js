@@ -21,8 +21,5 @@ async function readWholeDir(dir) {
 	return tree;
 }
 
-/*(async () => {
-	console.log(await readWholeDir("./"));
-})();*/
 
 module.exports = readWholeDir;

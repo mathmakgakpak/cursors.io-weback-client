@@ -1,7 +1,7 @@
 {
   "name": "cursors-client",
   "version": "0.7.1",
-  "build": 284,
+  "build": 320,
   "description": "cursors.io client",
   "main": "src/js/main.js",
   "scripts": {

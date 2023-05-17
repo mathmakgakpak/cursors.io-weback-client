@@ -1,14 +1,16 @@
-import { canvas } from "./elements";
+
 
 export const rendererSettings = {
     maxRenderedPlayers: 100,
-    maxRenderedDrawings: 30,
-
+    
+    maxRenderedLines: 4000,
     lineRenderDuration: 1000,
-    clickRenderduration: 1000,
+    lineDecayAfter: 10_000,
 
-    clickMaxRadius: 50,
+    clickRenderduration: 500,
+    clickMaxRadius: 25,
     maxRenderedClicks: 30,
+
 	
 	scale: 2
 }

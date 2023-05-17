@@ -1,12 +1,14 @@
 import { canvas } from './elements';
 import { mapSize } from './gameSettings'
 import EventEmitter from 'events';
-import { PointBob } from './types';
+import { Point, MousePositionInterface } from './types';
+import { rendererSettings } from "./gameSettings";
+const scale = rendererSettings.scale;
 
 const mouseEvents = new EventEmitter();
-const { width, height } = mapSize;
+const { canvasWidth, canvasHeight } = mapSize;
 export default mouseEvents;
-export const mousePos: PointBob = {
+export const mousePosition: MousePositionInterface = {
     x: 0,
     y: 0,
     canvasX: 0,
@@ -14,38 +16,42 @@ export const mousePos: PointBob = {
 };
 
 
-function getMousePos(canvas: HTMLCanvasElement, evt: MouseEvent) {
-    let rect = canvas.getBoundingClientRect();
+function getMousePos(canvas: HTMLCanvasElement, evt: MouseEvent): Point {
+    const rect = canvas.getBoundingClientRect();
     return {
         x: evt.clientX - rect.left,
         y: evt.clientY - rect.top
     };
 }
 
-const round = Math.round;
+const trunc = Math.trunc;
 function setPositionX(x: number) {
-    mousePos.canvasX = x;
-    mousePos.x = round(x/2);
+    mousePosition.canvasX = x;
+    mousePosition.x = trunc(x / scale);
 }
 
 function setPositionY(y: number) {
-    mousePos.canvasY = y;
-    mousePos.y = round(y/2);
+    mousePosition.canvasY = y;
+    mousePosition.y = trunc(y / scale);
 }
 
 canvas.addEventListener("mousemove", event => {
-    // mousePos.oldX = mousePos.x;
-    // mousePos.oldY = mousePos.y;
-    const isLocked = document.pointerLockElement === canvas;
-    if(isLocked) { 
-        mousePos.canvasX += event.movementX;
-        mousePos.canvasY += event.movementY;
-    
-        if(mousePos.canvasX > width) setPositionX(width);
-        else if(mousePos.canvasX < 0) setPositionX(0);
-        
-        if(mousePos.canvasY > height) setPositionY(height);
-        else if(mousePos.canvasY < 0) setPositionY(0);
+
+    const isLockedCanvas = document.pointerLockElement === canvas;
+    if(isLockedCanvas) { 
+        let canvasX = mousePosition.canvasX + event.movementX;
+        let canvasY = mousePosition.canvasY + event.movementY;
+
+        if(canvasX >= canvasWidth) canvasX = canvasWidth - 1;
+        else if(canvasX < 0) canvasX = 0;
+
+        setPositionX(canvasX)
+
+        if(canvasY >= canvasHeight) canvasY = canvasHeight - 1;
+        else if(canvasY < 0) canvasY = 0;
+
+        setPositionY(canvasY)
+
     } else {
         const pos = getMousePos(canvas, event);
 
@@ -53,11 +59,14 @@ canvas.addEventListener("mousemove", event => {
         setPositionY(pos.y);
     }
 
-    
-
-    mouseEvents.emit("mousemove", mousePos, isLocked, event);
+    mouseEvents.emit("mousemove", mousePosition, isLockedCanvas, event);
 });
 
 
-canvas.addEventListener("mousedown", event => {mouseEvents.emit("mousedown", mousePos, event)});
-canvas.addEventListener("mouseup", event => {mouseEvents.emit("mouseup", mousePos, event)});
+canvas.addEventListener("mousedown", event => {
+    mouseEvents.emit("mousedown", mousePosition, event);
+});
+
+canvas.addEventListener("mouseup", event => {
+    mouseEvents.emit("mouseup", mousePosition, event);
+});

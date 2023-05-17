@@ -48,7 +48,7 @@ export function parse(levelObjects: any) {
 // export 
 
 
-export function calculateGridSpace(levelObjects: LevelObject[]) { // this is to make pathfinding between walls and collision checking faster
+export function calculateGridSpace(levelObjects: LevelObject[]) { // this to make pathfinding between walls and collision checking faster
     let grid = 100;
     
     for (let length = levelObjects.length, i = 0; i < length; i++) {
@@ -108,7 +108,7 @@ export function unStuck({x: oldX, y: oldY}: Point, {x: newX, y: newY}: Point, so
         x: lastPos[0],
         y: lastPos[1],
         collides // if collides it returns an array with where exactly it collides
-        // TO-DO try to glow the wall which cursor collides with
+        // TODO: try to glow the wall which cursor collides with
     }
 }
 // export function changeStateOfWall(wall: LevelObject, grid: Uint8Array[], state: number) {

@@ -3,9 +3,10 @@
 // import { eventSys, PublicAPI } from './global';
 import { mapSize, rendererSettings } from './gameSettings';
 import { settings, } from './main';
-import { Line, PointBob } from './types';
+import { MousePositionInterface } from './types';
 import Click from "./classes/Click";
-import { LevelObject } from './classes/LevelObjects';
+import Line from "./classes/Line";
+import { LevelObject, ObjectTypes } from './classes/LevelObjects';
 import { canvas } from './elements';
 
 // https://stackoverflow.com/questions/43638454/webpack-typescript-image-import?rq=1
@@ -20,7 +21,7 @@ import { Players } from './classes/Player';
 const PI2 = Math.PI * 2;
 
 const { width, height, canvasWidth, canvasHeight } = mapSize;
-const { scale } = rendererSettings;
+const { scale, lineDecayAfter, lineRenderDuration, clickMaxRadius, clickRenderduration, maxRenderedClicks, maxRenderedLines, maxRenderedPlayers } = rendererSettings;
 
 
 
@@ -42,7 +43,7 @@ function setLevelOfDetail() { // https://developer.mozilla.org/en-US/docs/Web/AP
 
     canvas.width = canvasWidth * pixelRatio;
     canvas.height = canvasHeight * pixelRatio;
-    
+
 
     ctx.scale(pixelRatio, pixelRatio);
 }
@@ -57,7 +58,7 @@ function clearCanvas() {
 
 function renderState(wsState: number | undefined) {
     let text = "";
-    switch(wsState) {
+    switch (wsState) {
         case WebSocket.CONNECTING: {
             text = "Connecting";
             break;
@@ -83,21 +84,21 @@ function renderLevelObjects(levelObjects: /*LevelObject*/any[]) { // obj.width c
         let y = obj.y * scale;
         ctx.globalAlpha = 1;
 
-        if(obj.type === 0) { // text
-            if(obj.isCentered) x -= ctx.measureText(obj.text).width;
+        if (obj.type === ObjectTypes.TEXT) {
+            if (obj.isCentered) x -= ctx.measureText(obj.text).width;
 
             ctx.font = obj.size + "px NovaSquare";
             ctx.fillStyle = "#000";
             ctx.fillText(obj.content, x, y);
-        } else if(obj.type === 1) { // wall
+        } else if (obj.type === ObjectTypes.WALL) {
             ctx.fillStyle = obj.color;
             ctx.fillRect(x, y, obj.width * scale, obj.height * scale);
-        } else if(obj.type === 2) { // exit/red thing
+        } else if (obj.type === ObjectTypes.TELEPORT) {
             ctx.fillStyle = obj.isBad ? "#F00" : "#0F0";
             ctx.globalAlpha = 0.2;
             ctx.fillRect(x, y, obj.width * scale, obj.height * scale);
             ctx.globalAlpha = 1;
-        } else if(obj.type === 3) { // hover
+        } else if (obj.type === ObjectTypes.CURSOR_COUNTER) {
             ctx.fillStyle = obj.color;
             ctx.globalAlpha = 0.2;
             ctx.fillRect(x, y, obj.width * scale, obj.height * scale);
@@ -126,38 +127,38 @@ function renderLevelObjects(levelObjects: /*LevelObject*/any[]) { // obj.width c
             // not multipling or dividing obj.width because it has no sense then
 
             let text = obj.count;
-            if(obj.width < 40 && obj.height < 40) {
+            if (obj.width < 40 && obj.height < 40) {
                 ctx.font = "30px NovaSquare";
 
-                x += obj.width - ctx.measureText(text).width/2;
+                x += obj.width - ctx.measureText(text).width / 2;
                 y += obj.height + 10;
-                
-            } else { 
+
+            } else {
                 ctx.font = "60px NovaSquare";
 
-                x += obj.width - ctx.measureText(text).width/2;
+                x += obj.width - ctx.measureText(text).width / 2;
                 y += obj.height + 20;
             }
 
             ctx.fillText(text, x, y);
             ctx.globalAlpha = 1;
-        } else if(obj.type === 4) { // button TO-DO fix it later
+        } else if (obj.type === ObjectTypes.BUTTON) { // TODO: fix it later
             ctx.fillStyle = obj.color;
             ctx.fillRect(x, y, obj.width * scale, obj.height * scale);
 
             ctx.fillStyle = "#000";
 
             let text = obj.count;
-            if(obj.width < 40 && obj.height < 40) {
+            if (obj.width < 40 && obj.height < 40) {
                 ctx.font = "30px NovaSquare";
 
-                x += obj.width - ctx.measureText(text).width/2;
+                x += obj.width - ctx.measureText(text).width / 2;
                 y += obj.height + 10;
-                
-            } else { 
+
+            } else {
                 ctx.font = "60px NovaSquare";
 
-                x += obj.width - ctx.measureText(text).width/2;
+                x += obj.width - ctx.measureText(text).width / 2;
                 y += obj.height + 20;
             }
 
@@ -165,46 +166,64 @@ function renderLevelObjects(levelObjects: /*LevelObject*/any[]) { // obj.width c
         }
     });
 }
-function renderLines(lines: Line[]) {
+function renderLines(lines: Line[], now = Date.now()) {
     ctx.strokeStyle = "#000";
     ctx.lineWidth = 1;
-    let now = Date.now();
-    lines.forEach(({x1, y1, x2, y2, removeAt}, i) => {
-        let degreeOfDecay = (now - removeAt) / rendererSettings.lineRenderDuration;
 
-        degreeOfDecay = 10 - degreeOfDecay 
+    let i = -1;
+    for(const { x1, y1, x2, y2, removeAt } of lines) {
+        i++;
 
-        if(degreeOfDecay > 1) degreeOfDecay = 1
+        const timeLeft = lineDecayAfter - (now - removeAt);
 
-        if(degreeOfDecay < 0) {
+        if (timeLeft < 0) {
             lines.splice(i, 1);
-            return;
+            continue;
+        }
+        if(i > maxRenderedLines) {
+            continue;
         }
 
+
+        let degreeOfDecay = timeLeft / lineRenderDuration;
+
+        // i could use Math.min(degreeOfDecay, 1) but it would be less readable
+
+        if (degreeOfDecay > 1) degreeOfDecay = 1;
+        
+        
         ctx.globalAlpha = 0.3 * degreeOfDecay;
         ctx.beginPath();
         ctx.moveTo(x1 * scale - 0.5, y1 * scale - 0.5);
         ctx.lineTo(x2 * scale - 0.5, y2 * scale - 0.5);
         ctx.stroke();
-    });
-}
-function renderClicks(clicks: Click[]) {
-    // ctx.strokeStyle = "#000";
-    let now = Date.now();
-    clicks.forEach((click, i) => {
-        let radius = (now - click.removeAt) / rendererSettings.clickRenderduration;
-        if(radius < 0) {
-            clicks.splice(i, 1);
-            return;
-        }
-        let stage = (1 - 2 * radius) * 0.3;
-        radius *= 50;
 
-        ctx.globalAlpha = stage;
+        
+    };
+}
+function renderClicks(clicks: Click[], now = Date.now()) {
+    // ctx.strokeStyle = "#000";
+    let i = -1;
+    for (const {x, y, removeAt} of clicks) {
+        i++;
+        const timeLeft = (removeAt - now) / clickRenderduration;
+        
+        if (timeLeft < 0) {
+            clicks.splice(i, 1);
+            continue;
+        }
+        if(i > maxRenderedClicks) continue;
+
+        const degreeOfDecay = timeLeft * 0.3;
+        const radius = (1 - timeLeft) * clickMaxRadius;
+
+
+        ctx.globalAlpha = degreeOfDecay;
         ctx.beginPath();
-        ctx.arc(click.x, click.y, radius, 0, PI2);
+        ctx.arc(x * scale, y * scale, radius, 0, PI2);
         ctx.stroke();
-    })
+        
+    }
 }
 
 function drawText(text: string, x: number, y: number) {
@@ -220,19 +239,19 @@ function renderHUD(onlinePlayers: number, playersOnLevel: number, actualLevel: n
     ctx.font = "12px NovaSquare";
     //ctx.strokeStyle = "#000";
     ctx.lineWidth = 2.5;
-    
+
     ctx.fillStyle = `hsl(${hue()}, 100%, 50%)`
 
     drawText("Client made by felpcereti#9857", 10, 12 * 1.3); // code gets optimized by webpack
-    
+
     ctx.fillStyle = "#fff";
-    
+
     drawText(FPS + " FPS", 10, 12 * 2 * 1.3);
-    
+
     let text = "Use shift+click to draw";
-    if(playersOnLevel > 100) text = "Area too full, not all cursors are shown";
-    else if(playersOnLevel > 30) text = "Area too full, drawing is disabled";
-    
+    if (playersOnLevel > 100) text = "Area too full, not all cursors are shown";
+    else if (playersOnLevel > 30) text = "Area too full, drawing is disabled";
+
     let y = canvasHeight - 10;
     drawText(text, 10, y);
 
@@ -258,13 +277,14 @@ function renderHUD(onlinePlayers: number, playersOnLevel: number, actualLevel: n
 }
 
 function renderPlayers(players: Players) {
-    
+
     ctx.font = "12px NovaSquare";
     ctx.fillStyle = "#000";
 
     let i = 0;
-    for(const id in players) {
-        if(i > rendererSettings.maxRenderedPlayers) break;
+    for (const id in players) {
+        if (i > maxRenderedPlayers) break;
+
         let player = players[id];
         let x = player.x * scale;
         let y = player.y * scale;
@@ -274,29 +294,26 @@ function renderPlayers(players: Players) {
     }
 }
 
-function renderMainPlayer({canvasX: px, canvasY: py}: PointBob, {canvasX: mx, canvasY: my}: PointBob) { // trunc is as fast as | 0
-    px *= scale;
-    py *= scale;
+function renderMainPlayer({ canvasX: px, canvasY: py }: MousePositionInterface, { canvasX: mx, canvasY: my }: MousePositionInterface) { // trunc is as fast as | 0
 
-    if(document.pointerLockElement !== canvas) { // change that
-        if(px !== mx || py !== my) {
-            ctx.fillStyle = "#F00";
-            ctx.globalAlpha = 0.2;
-            
-            ctx.beginPath();
-            ctx.arc(mx + 2, my + 8, 20, 0, PI2);
-            ctx.fill();
-
-            ctx.globalAlpha = 0.5;
-            ctx.drawImage(cursorImage, mx - 4, my - 4);
-        }
+    if (document.pointerLockElement !== canvas && (px !== mx || py !== my)) { // TODO: change that
+        ctx.fillStyle = "#F00";
         ctx.globalAlpha = 0.2;
-        ctx.fillStyle = "#FF0";
-        
+
         ctx.beginPath();
-        ctx.arc(px + 2, py + 8, 20, 0, PI2);
+        ctx.arc(mx + 2, my + 8, 20, 0, PI2);
         ctx.fill();
+
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(cursorImage, mx - 4, my - 4);
     }
+    // draws The Halo
+    ctx.globalAlpha = 0.2;
+    ctx.fillStyle = "#FF0";
+
+    ctx.beginPath();
+    ctx.arc(px + 2, py + 8, 20, 0, PI2);
+    ctx.fill();
 
     ctx.globalAlpha = 1;
     ctx.drawImage(cursorImage, px - 4, py - 4);
@@ -326,26 +343,26 @@ export function renderDoNotEmbedSite() {
 7. main cursor
 */
 export default function RenderFrame(
-     wsState: number | undefined,
-     levelObjects: LevelObject[],
-     drawings: Line[],
-     clicks: Click[],
-     onlinePlayers: number,
-     playersOnLevel: number,
-     actualLevel: number,
-     FPS: number,
-     players: any,
-     playerPos: PointBob,
-     mousePos: PointBob) {
+    wsState: number | undefined,
+    levelObjects: LevelObject[],
+    drawings: Line[],
+    clicks: Click[],
+    onlinePlayers: number,
+    playersOnLevel: number,
+    actualLevel: number,
+    FPS: number,
+    players: any,
+    playerPos: MousePositionInterface,
+    mousePos: MousePositionInterface) {
     clearCanvas();
-    
-    if(wsState !== WebSocket.OPEN) return renderState(wsState);
-    
+
+    if (wsState !== WebSocket.OPEN) return renderState(wsState);
+
     renderLevelObjects(levelObjects);
 
-    if(!settings.disableDrawings) renderLines(drawings);
+    if (!settings.disableDrawings) renderLines(drawings); // TODO: 
     renderClicks(clicks);
-    
+
     renderHUD(onlinePlayers, playersOnLevel, actualLevel, FPS);
     renderPlayers(players);
     renderMainPlayer(playerPos, mousePos);

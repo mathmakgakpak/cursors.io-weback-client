@@ -8,7 +8,4 @@ export default class Click {
     ) {
         this.removeAt = clickedAt + clickRenderTime;
     }
-    isRemoved(now: number = Date.now()) {
-        return this.removeAt < now;
-    }
 }

@@ -1,12 +1,12 @@
 import { eventSys, PublicAPI } from './global';
 import { Settings } from './Settings';
-import mouseEvents, { mousePos } from './mouse';
+import mouseEvents, { mousePosition } from './mouse';
 import { canvas } from './elements';
 import { Client } from './Networking/Client';
-import { getCursorsServer, unStuck, getPointerLockElement } from './utils';
+import { getCursorsServer, unStuck } from './utils';
 import log from './sexylogs';
 import RenderFrame, { renderDoNotEmbedSite } from './canvasRenderer';
-import { PointBob } from './types';
+import { MousePositionInterface } from './types';
 
 import "../style.css";
 
@@ -23,7 +23,7 @@ log.info("Version: " + PublicAPI.version);
 
 log.info("Build: " + PublicAPI.build);
 
-export const client = new Client({
+export const client = PublicAPI.client =  new Client({
     autoMakeSocket: false
 });
 
@@ -39,11 +39,11 @@ async function connect() {
 }
 
 
-mouseEvents.on("mousedown", (mousePos: PointBob, event: MouseEvent) => {
+mouseEvents.on("mousedown", (mousePos: MousePositionInterface, event: MouseEvent) => {
     if(gettingIp) return;
     if(!client.ws) return connect();
     if(client.ws.readyState !== 1) return;
-    if(!settings.noCursorLock && getPointerLockElement() !== canvas) canvas.requestPointerLock();
+    if(!settings.noCursorLock && document.pointerLockElement !== canvas) canvas.requestPointerLock();
 
     if((event.ctrlKey || event.shiftKey) && !settings.disableDrawings) {
         let unstucked = unStuck(client.position, mousePos, client.solidMap);
@@ -56,12 +56,12 @@ mouseEvents.on("mousedown", (mousePos: PointBob, event: MouseEvent) => {
     return;
 });
 
-mouseEvents.on("mousemove", (mousePos: PointBob, event: MouseEvent) => {
-    if(client.ws?.readyState !== 1) return;
+mouseEvents.on("mousemove", (mousePos: MousePositionInterface) => {
+    if(client.ws?.readyState !== WebSocket.OPEN) return;
     //console.log(client.position, mousePos);
-    let unStucked = unStuck(client.position, mousePos, client.solidMap);
-    //console.log(unStucked)
-    client.move(unStucked.x, unStucked.y);
+    let {x, y} = unStuck(client.position, mousePos, client.solidMap);
+
+    client.move(x, y);
 });
 
 let _FPS = 0;
@@ -71,10 +71,11 @@ window.setInterval(() => {
     _FPS = 0;
 }, 1000);
 
+
 function render() {
     try {
-        RenderFrame(client.ws?.readyState, client.levelObjects, client.drawings, client.clicks, client.usersOnline, client.playersOnLevel, client.level, FPS, client.players, client.position, mousePos);
-    _FPS++;
+        RenderFrame(client.ws?.readyState, client.levelObjects, client.lines, client.clicks, client.usersOnline, client.playersOnLevel, client.level, FPS, client.players, client.position, mousePosition);
+        _FPS++;
     } catch(e) {
         log.error("Rendering error: ", e);
     }

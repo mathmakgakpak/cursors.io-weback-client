@@ -1,6 +1,5 @@
 export const canvas = <HTMLCanvasElement>document.getElementById("canvas");
-// @ts-ignore
-canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock || canvas.webkitRequestPointerLock;
+
 canvas.addEventListener('contextmenu', event => event.preventDefault()); // bob
 
 

@@ -64,6 +64,6 @@ export default class SolidMap {
 
         // if (i < 0 || i >= this.length) return true; // in this implementation x still can be negative and it will count as inside
         
-        return !!this.solid[y * this.width + x] && this.isOutsideMap(x, y);
+        return !!this.solid[y * this.width + x] || this.isOutsideMap(x, y);
     }
 }
