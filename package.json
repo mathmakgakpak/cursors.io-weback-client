@@ -1,14 +1,13 @@
 {
   "name": "cursors-client",
   "version": "0.7.1",
-  "build": 320,
   "description": "cursors.io client",
   "main": "src/js/main.js",
   "scripts": {
     "build": "webpack --env production",
     "production": "webpack --env production",
-    "dev": "webpack --env dev",
-    "devclean": "webpack --env devclean",
+    "dev": "webpack",
+    "devclean": "webpack --env shouldCleanDist",
     "watch": "webpack -w",
     "start": "webpack-dev-server"
   },

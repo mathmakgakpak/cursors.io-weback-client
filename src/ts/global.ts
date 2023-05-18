@@ -16,8 +16,7 @@ PublicAPI.removeListener = PublicAPI.off = eventSys.removeListener.bind(eventSys
 
 PublicAPI.require = browserRequire;
 
-PublicAPI.srcFiles = process.env.SRC_FILES;
-PublicAPI.build = process.env.BUILD;
+PublicAPI.buildNumber = process.env.BUILD_NUMBER;
 
 PublicAPI.version = process.env.VERSION;
 PublicAPI.productionBuild = process.env.PRODUCTION_BUILD;

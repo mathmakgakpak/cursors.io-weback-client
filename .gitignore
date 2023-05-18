@@ -1,4 +1,5 @@
 node_modules/
 shit/
 build/
+dist/
 client_out_org.js

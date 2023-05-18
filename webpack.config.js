@@ -3,56 +3,43 @@ const webpack = require('webpack');
 const fs = require('fs-extra');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
-const readWholeDir = require("./readwholedir.js");
+const { version: VERSION } = require("./package.json");
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
-const packageJSON = require("./package.json");
-let VERSION = packageJSON.version;
-let BUILD = packageJSON.build;
 
-function addToVersion(version, number = 1) { // unreadable
-    let zeros = version.split(".");
-    for (let i = 0; i < zeros.length; i++) if (zeros[i] != 0) {
-        zeros = zeros.slice(0, i).join(".");
-        break;
-    }
-    return zeros + "." + (+version.split(".").join("") + number).toString().split("").join(".");
-}
 
-const srcDir = path.resolve(__dirname, "src");
+
+
 
 module.exports = async (env = {}) => {
-    const PRODUCTION_BUILD = !!env.production;
+    const srcDir = path.resolve(__dirname, "src");
+    const isProductionBuild = !!env.production;
+    const shouldCleanDist = isProductionBuild || env.shouldCleanDist;
 
-    if (PRODUCTION_BUILD) packageJSON.version = VERSION = addToVersion(VERSION);
-
-
-    /*const BUILD = +(await fs.readFile("./build.txt", {encoding: "utf8"})) + 1;
-    await fs.writeFile("./build.txt", BUILD.toString());*/
-
-    packageJSON.build = ++BUILD;
-
-    await fs.writeFile("./package.json", JSON.stringify(packageJSON, null, 2));
+    const BUILD_NUMBER = +(await fs.readFile("./build.txt", {encoding: "utf8"})) + 1;
+    
+    await fs.writeFile("./build.txt", BUILD_NUMBER.toString());
+    
 
     const config = {
-        mode: PRODUCTION_BUILD ? "production" : "development",
-        devtool: PRODUCTION_BUILD ? undefined : "source-map",
+        mode: isProductionBuild ? "production" : "development",
+        devtool: isProductionBuild ? "source-map" : "eval",
         entry: {
             client_out: path.resolve(srcDir, "ts", "main.ts")
         },
 
         devServer: {
             static: {
-                directory: path.resolve(__dirname, 'build'),
+                directory: path.resolve(__dirname, 'dist'),
 
             },
-            watchFiles: ['src/**/*.ts', 'build/**/*'],
+            watchFiles: ['src/**/*.ts', 'dist/**/*'],
         },
         output: {
             filename: "[name].js",
-            path: path.resolve(__dirname, 'build'),
-            publicPath: PRODUCTION_BUILD ? '/' : './',
-            clean: PRODUCTION_BUILD || env.devclean,
+            path: path.resolve(__dirname, 'dist'),
+            publicPath: isProductionBuild ? '/' : './',
+            clean: shouldCleanDist,
         },
         resolve: {
             extensions: ['*', '.ts', '.js', '.json'],
@@ -102,21 +89,12 @@ module.exports = async (env = {}) => {
                 inject: 'body',
                 template: path.resolve(srcDir, 'index.html'),
                 favicon: path.resolve(srcDir, 'favicon.ico'),
-                minify: PRODUCTION_BUILD ? {
-                    collapseWhitespace: true,
-                    removeComments: true,
-                    removeRedundantAttributes: true,
-                    removeScriptTypeAttributes: true,
-                    removeStyleLinkTypeAttributes: true,
-                    useShortDoctype: true,
-                    minifyCSS: true
-                } : {}
+                minify: "auto"
             }),
             new webpack.EnvironmentPlugin({
-                PRODUCTION_BUILD,
-                BUILD,
+                PRODUCTION_BUILD: isProductionBuild,
+                BUILD_NUMBER,
                 VERSION,
-                SRC_FILES: await readWholeDir(srcDir)
             })
         ]
     };
@@ -125,7 +103,7 @@ module.exports = async (env = {}) => {
         console.log(`Cleaning build dir: '${config.output.path}'`);
     }
 
-    console.log(`${config.mode} build\nVersion: ${VERSION}\nBuild: ${BUILD}\n`);
+    console.log(`${config.mode} build\nVersion: ${VERSION}\nBuild: ${BUILD_NUMBER}\n`);
 
     return config;
 }

@@ -1,7 +1,7 @@
 // @ats-nocheck
 
 import { mapSize, defaultURL } from './gameSettings'
- import { Point } from './types';
+import { Point } from './types';
 import { LevelObject } from './classes/LevelObjects';
 import SolidMap from './SolidMap';
 
@@ -50,7 +50,7 @@ export function parse(levelObjects: any) {
 
 export function calculateGridSpace(levelObjects: LevelObject[]) { // this to make pathfinding between walls and collision checking faster
     let grid = 100;
-    
+
     for (let length = levelObjects.length, i = 0; i < length; i++) {
         if (grid <= 1) { // if it can't find 
             grid = 1;
@@ -76,13 +76,54 @@ export function calculateGridSpace(levelObjects: LevelObject[]) { // this to mak
     return grid;
 }
 
+// export function unStuck({ x: x1, y: y1 }: Point, { x: x2, y: y2 }: Point, solidMap: SolidMap): { x: number, y: number, collides: boolean } {
+//     if (solidMap.isPointSolid(x1, y1)) {
+//         return { x: x1, y: y1, collides: true };
+//     }
+
+//     if (x1 === x2 && y1 === y2) {
+//         return { x: x2, y: y2, collides: false };
+//     }
+
+//     let [x, y] = [x1, y1];
+//     const dx: number = Math.sign(x2 - x1);
+//     const dy: number = Math.sign(y2 - y1);
+//     const width: number = Math.abs(x2 - x1);
+//     const height: number = Math.abs(y2 - y1);
+//     let collides: boolean = false;
+
+//     if (width >= height) {
+//         const slope: number = height / width;
+//         for (let i: number = 0; i <= width; i++) {
+//             if (solidMap.isPointSolid(x, y)) {
+//                 collides = true;
+//                 break;
+//             }
+//             x += dx;
+//             y += Math.round(dy * slope);
+//         }
+//     } else {
+//         const slope: number = width / height;
+//         for (let i: number = 0; i <= height; i++) {
+//             if (solidMap.isPointSolid(x, y)) {
+//                 collides = true;
+//                 break;
+//             }
+//             x += Math.round(dx * slope);
+//             y += dy;
+//         }
+//     }
+
+//     return { x, y, collides};
+// }
+
 
 export function* walk(x1: number, y1: number, x2: number, y2: number) { // it creates a line
-    let dx =  Math.abs(x2 - x1), sx = x1 < x2 ? 1 : -1;
-	let dy = -Math.abs(y2 - y1), sy = y1 < y2 ? 1 : -1;
+    const dx =  Math.abs(x2 - x1), sx = x1 < x2 ? 1 : -1;
+	const dy = -Math.abs(y2 - y1), sy = y1 < y2 ? 1 : -1;
 	let err = dx + dy,
 		e2;
-
+    
 	while(true) {
 		yield [x1, y1];
 		if (x1 == x2 && y1 == y2) break;
@@ -103,7 +144,7 @@ export function unStuck({x: oldX, y: oldY}: Point, {x: newX, y: newY}: Point, so
         }
         lastPos = pos;
     }
-    
+
     return {
         x: lastPos[0],
         y: lastPos[1],
@@ -116,7 +157,7 @@ export function unStuck({x: oldX, y: oldY}: Point, {x: newX, y: newY}: Point, so
 //     const x2 = wall.x + wall.width;
 //     // @ts-ignore
 //     const y2 = wall.y + wall.height;
-    
+
 //     for(let y = wall.y; y < y2; y++) {
 //         const array = grid[y];
 //         for(let x = wall.x; x < x2; x++) {
@@ -143,7 +184,7 @@ export function generateRainbow(times: number = 32, frequency: number = 0.01) {
 }
 
 export function* rainbowGenerator(frequency: number = 0.1) {
-    for(let i = 0;; i++) {
+    for (let i = 0; ; i++) {
         let r = Math.sin(frequency * i + 0) * 127 + 128;
         let g = Math.sin(frequency * i + 2) * 127 + 128;
         let b = Math.sin(frequency * i + 4) * 127 + 128;
@@ -160,6 +201,6 @@ export async function getCursorsServer() {
     return defaultURL;
     location.href.replace("http", "ws")
     // const info = await findServerPreference("cursors");
-    
+
     // return info && info[0] ? infoToIP(info[0]) : defaultURL;
 }

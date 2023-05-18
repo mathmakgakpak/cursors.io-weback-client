@@ -59,8 +59,8 @@ mouseEvents.on("mousedown", (mousePos: MousePositionInterface, event: MouseEvent
 mouseEvents.on("mousemove", (mousePos: MousePositionInterface) => {
     if(client.ws?.readyState !== WebSocket.OPEN) return;
     //console.log(client.position, mousePos);
-    let {x, y} = unStuck(client.position, mousePos, client.solidMap);
-
+    let {x, y, collides} = unStuck(client.position, mousePos, client.solidMap);
+    // console.log(x, y, collides)
     client.move(x, y);
 });
 
